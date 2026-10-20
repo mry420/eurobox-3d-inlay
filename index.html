@@ -1,0 +1,1282 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Eurobox Inlay Generator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: Werkzeug-Seitenleiste links, große 3D-Bühne rechts; auf dem Handy Bühne oben, Werkzeuge darunter */
+:root {
+  --bg: #f5f5f7;
+  --surface: #ffffff;
+  --surface-2: #f2f2f5;
+  --fill: rgba(118, 118, 128, .12);
+  --seg-on: #ffffff;
+  --fg: #1d1d1f;
+  --fg-2: #6e6e73;
+  --fg-3: #aeaeb2;
+  --line: rgba(60, 60, 67, .14);
+  --accent: #0071e3;
+  --accent-soft: rgba(0, 113, 227, .12);
+  --on-accent: #ffffff;
+  --warn: #c45500;
+  --warn-soft: rgba(255, 149, 0, .16);
+  --ok: #248a3d;
+  --ok-soft: rgba(52, 199, 89, .14);
+  --scene: #e8e8ed;
+  --bin: #fbfbfd;
+  --bin-edge: #8e8e93;
+  --shell: #8e8e93;
+  --limit: #ff9500;
+  --glass: rgba(255, 255, 255, .72);
+  --shadow: 0 1px 2px rgba(0, 0, 0, .04), 0 8px 24px rgba(0, 0, 0, .05);
+  --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --r-lg: 18px;
+  --r-md: 12px;
+  --r-sm: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #000000; --surface: #1c1c1e; --surface-2: #2c2c2e; --fill: rgba(118, 118, 128, .24); --seg-on: #636366;
+    --fg: #f5f5f7; --fg-2: #98989d; --fg-3: #636366; --line: rgba(84, 84, 88, .55);
+    --accent: #0a84ff; --accent-soft: rgba(10, 132, 255, .22); --on-accent: #ffffff;
+    --warn: #ff9f0a; --warn-soft: rgba(255, 159, 10, .18); --ok: #30d158; --ok-soft: rgba(48, 209, 88, .16);
+    --scene: #141416; --bin: #48484a; --bin-edge: #aeaeb2; --shell: #636366; --limit: #ff9f0a;
+    --glass: rgba(44, 44, 46, .72); --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 8px 24px rgba(0, 0, 0, .35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #000000; --surface: #1c1c1e; --surface-2: #2c2c2e; --fill: rgba(118, 118, 128, .24); --seg-on: #636366;
+  --fg: #f5f5f7; --fg-2: #98989d; --fg-3: #636366; --line: rgba(84, 84, 88, .55);
+  --accent: #0a84ff; --accent-soft: rgba(10, 132, 255, .22); --on-accent: #ffffff;
+  --warn: #ff9f0a; --warn-soft: rgba(255, 159, 10, .18); --ok: #30d158; --ok-soft: rgba(48, 209, 88, .16);
+  --scene: #141416; --bin: #48484a; --bin-edge: #aeaeb2; --shell: #636366; --limit: #ff9f0a;
+  --glass: rgba(44, 44, 46, .72); --shadow: 0 1px 2px rgba(0, 0, 0, .5), 0 8px 24px rgba(0, 0, 0, .35);
+  color-scheme: dark;
+}
+
+html, body { height: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font: 14px/1.45 var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app {
+  display: grid;
+  grid-template-columns: minmax(320px, 390px) minmax(0, 1fr);
+  gap: 16px;
+  height: 100%;
+  box-sizing: border-box;
+  padding-block: 16px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  min-width: 0;
+  padding-bottom: 8px;
+}
+.brand { display: grid; gap: 2px; padding: 4px 4px 2px; }
+.brand h1 { margin: 0; font-size: 28px; line-height: 1.1; font-weight: 700; letter-spacing: -.02em; text-wrap: balance; }
+.brand p { margin: 0; color: var(--fg-2); font-size: 15px; }
+
+.group {
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.group h2 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -.01em; }
+.group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.hint { margin: 0; color: var(--fg-2); font-size: 13px; }
+.tag { font-size: 12px; color: var(--fg-2); }
+
+/* Segmented control */
+.seg {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  background: var(--fill);
+  border-radius: 9px;
+  padding: 2px;
+  gap: 2px;
+}
+.seg button {
+  border: 0;
+  background: transparent;
+  padding: 6px 10px;
+  border-radius: 7px;
+  font-weight: 500;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  transition: background .2s, box-shadow .2s;
+}
+.seg button[aria-pressed="true"] { background: var(--seg-on); box-shadow: 0 1px 3px rgba(0, 0, 0, .14), 0 0 0 .5px rgba(0, 0, 0, .04); }
+
+.facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.fact { background: var(--surface-2); border-radius: var(--r-md); padding: 10px 12px; display: grid; gap: 1px; }
+.fact b { font-size: 20px; font-weight: 600; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+.fact span { font-size: 12px; color: var(--fg-2); }
+
+details.adv { border-top: 1px solid var(--line); padding-top: 10px; }
+details.adv summary { cursor: pointer; color: var(--accent); font-weight: 500; list-style: none; }
+details.adv summary::-webkit-details-marker { display: none; }
+details.adv summary::after { content: " ›"; display: inline-block; transition: transform .2s; }
+details.adv[open] summary::after { transform: rotate(90deg); }
+.fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+.fields label { display: grid; gap: 4px; font-size: 12px; color: var(--fg-2); min-width: 0; }
+.fields input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  font-variant-numeric: tabular-nums;
+}
+.fields .note { grid-column: 1 / -1; font-size: 12px; color: var(--fg-2); margin: 0; }
+
+/* Templates */
+.templates { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.tpl {
+  border: 2px solid transparent;
+  background: var(--surface-2);
+  border-radius: var(--r-md);
+  padding: 8px;
+  text-align: left;
+  display: grid;
+  gap: 6px;
+  align-content: start;
+  transition: border-color .2s, transform .15s;
+}
+.tpl:active { transform: scale(.98); }
+.tpl[aria-pressed="true"] { border-color: var(--accent); }
+.tpl svg { width: 100%; height: auto; display: block; }
+.tpl strong { font-size: 13px; font-weight: 600; }
+.tpl small { font-size: 11.5px; color: var(--fg-2); line-height: 1.3; }
+
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 34px; }
+.row > span { font-size: 14px; }
+.stepper { display: inline-flex; align-items: center; background: var(--fill); border-radius: var(--r-sm); }
+.stepper button { border: 0; background: transparent; width: 34px; height: 30px; font-size: 18px; line-height: 1; color: var(--fg); border-radius: var(--r-sm); }
+.stepper button:disabled { color: var(--fg-3); cursor: default; }
+.stepper output { min-width: 28px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* Plan */
+.plan-wrap { background: var(--surface-2); border-radius: var(--r-md); padding: 10px; }
+#plan { width: 100%; height: auto; display: block; touch-action: manipulation; }
+#plan .bin { cursor: pointer; }
+#plan .empty { cursor: copy; }
+
+.editor { display: grid; gap: 10px; border-top: 1px solid var(--line); padding-top: 12px; }
+.ed-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.ed-head strong { font-size: 15px; }
+.ed-head span { color: var(--fg-2); font-size: 13px; font-variant-numeric: tabular-nums; }
+.switch {
+  position: relative; flex: none;
+  width: 51px; height: 31px; border: 0; padding: 0;
+  border-radius: 980px; background: var(--fill);
+  transition: background .2s;
+}
+.switch span {
+  position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%;
+  background: #ffffff; box-shadow: 0 3px 8px rgba(0, 0, 0, .15), 0 1px 1px rgba(0, 0, 0, .16);
+  transition: transform .2s;
+}
+.switch[aria-checked="true"] { background: var(--ok); }
+.switch[aria-checked="true"] span { transform: translateX(20px); }
+.btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.btn {
+  border: 0;
+  border-radius: 980px;
+  padding: 7px 13px;
+  background: var(--fill);
+  color: var(--accent);
+  font-weight: 500;
+  font-size: 13px;
+  transition: opacity .2s, transform .15s;
+}
+.btn:active { transform: scale(.97); }
+.btn:disabled { opacity: .4; cursor: default; transform: none; }
+.btn.danger { color: #ff3b30; }
+.btn.primary { background: var(--accent); color: var(--on-accent); padding: 11px 18px; font-size: 15px; }
+.btn.wide { width: 100%; }
+
+/* Bill of materials */
+.bom-wrap { overflow-x: auto; }
+table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.bom th { text-align: left; font-weight: 500; color: var(--fg-2); font-size: 12px; padding: 0 6px 6px 0; }
+.bom td { padding: 7px 6px 7px 0; border-top: 1px solid var(--line); white-space: nowrap; }
+.bom tr.sel td { color: var(--accent); }
+.letter {
+  display: inline-grid; place-items: center;
+  width: 22px; height: 22px; border-radius: 6px;
+  background: var(--fill); font-weight: 600; font-size: 12px;
+}
+.chip { display: inline-block; padding: 2px 8px; border-radius: 980px; font-size: 11.5px; font-weight: 500; }
+.chip.ok { background: var(--ok-soft); color: var(--ok); }
+.chip.warn { background: var(--warn-soft); color: var(--warn); }
+.actions { display: grid; gap: 8px; }
+
+/* Stage */
+.stage {
+  position: relative;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--scene);
+  min-height: 0;
+  min-width: 0;
+}
+.stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.hud {
+  position: absolute; left: 12px; right: 12px; top: 12px;
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap;
+  pointer-events: none;
+}
+.hud-bottom { top: auto; bottom: 12px; align-items: flex-end; }
+.pill {
+  background: var(--glass);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-radius: 980px;
+  padding: 7px 13px;
+  font-size: 12.5px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  pointer-events: auto;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
+}
+.pill.btnlike { border: 0; color: var(--accent); }
+.hud-btns { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.pill.btnlike[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.legend { display: flex; align-items: center; gap: 6px; color: var(--fg-2); }
+.legend i { width: 14px; height: 3px; border-radius: 2px; background: var(--limit); display: inline-block; }
+.stage-msg { position: absolute; inset: 0; display: grid; place-items: center; color: var(--fg-2); padding: 24px; text-align: center; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  transform: translate(-50%, 20px);
+  opacity: 0;
+  background: var(--glass);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  color: var(--fg);
+  padding: 10px 16px;
+  border-radius: 980px;
+  box-shadow: var(--shadow);
+  font-weight: 500;
+  transition: opacity .25s, transform .25s;
+  pointer-events: none;
+  max-width: calc(100% - 32px);
+  z-index: 20;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 860px) {
+  html, body { height: auto; }
+  .app { grid-template-columns: minmax(0, 1fr); height: auto; }
+  .stage { order: -1; height: 56vh; min-height: 300px; }
+  .panel { overflow: visible; }
+}
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="panel">
+    <header class="brand">
+      <h1>Eurobox Inlay</h1>
+      <p>Stapelbare Einsätze, die deine Eurobox bündig ausfüllen. Als STL zum Drucken.</p>
+    </header>
+
+    <section class="group" aria-labelledby="h-box">
+      <h2 id="h-box">Box</h2>
+      <div class="seg" id="box-seg" role="group" aria-label="Boxgröße">
+        <button type="button" data-box="12" id="box-12">40 × 30 × 12 cm</button>
+        <button type="button" data-box="17" id="box-17">40 × 30 × 17 cm</button>
+      </div>
+      <div class="facts">
+        <div class="fact"><b id="f-area">355 × 255</b><span>Innenfläche am Boden (mm)</span></div>
+        <div class="fact"><b id="f-height">100 mm</b><span id="f-height-note">Einsatz-Höhe gesamt</span></div>
+      </div>
+      <details class="adv" id="adv">
+        <summary>Maße &amp; Druck anpassen</summary>
+        <div class="fields">
+          <label for="in-L">Innenlänge Boden (mm)<input id="in-L" data-k="L" type="number" step="0.5" min="100" max="400"></label>
+          <label for="in-W">Innenbreite Boden (mm)<input id="in-W" data-k="W" type="number" step="0.5" min="100" max="300"></label>
+          <label for="in-Ltop">Innenlänge oben (mm)<input id="in-Ltop" data-k="Ltop" type="number" step="0.5" min="100" max="420"></label>
+          <label for="in-H">Innenhöhe dieser Box (mm)<input id="in-H" data-k="H" type="number" step="1" min="30" max="200"></label>
+          <label for="in-clearance">Stapel-Freiraum (mm)<input id="in-clearance" data-k="clearance" type="number" step="1" min="0" max="60"></label>
+          <label for="in-boxRadius">Eckradius Box innen (mm)<input id="in-boxRadius" data-k="boxRadius" type="number" step="0.5" min="0" max="40"></label>
+          <label for="in-wall">Wandstärke (mm)<input id="in-wall" data-k="wall" type="number" step="0.1" min="0.8" max="5"></label>
+          <label for="in-floor">Bodenstärke (mm)<input id="in-floor" data-k="floor" type="number" step="0.1" min="0.6" max="5"></label>
+          <label for="in-divider">Trennwand (mm)<input id="in-divider" data-k="divider" type="number" step="0.1" min="0.8" max="5"></label>
+          <label for="in-gap">Spiel zwischen Teilen (mm)<input id="in-gap" data-k="gap" type="number" step="0.1" min="0" max="5"></label>
+          <label for="in-radius">Eckradius Teile (mm)<input id="in-radius" data-k="radius" type="number" step="0.5" min="0.5" max="20"></label>
+          <label for="in-holeRadius">Fach-Rundung (mm)<input id="in-holeRadius" data-k="holeRadius" type="number" step="0.5" min="0" max="10"></label>
+          <label for="in-bed">Druckbett (mm)<input id="in-bed" data-k="bed" type="number" step="1" min="100" max="500"></label>
+          <p class="note">Miss innen am Boden und oben am Rand: Die Wände der Eurobox laufen schräg. Die Außenwände der Randteile folgen dieser Schräge, so sitzt jede Ebene bündig und spielfrei. Der Stapel-Freiraum bleibt oben frei, weil der Fuß der darüber gestapelten Box hineinragt.</p>
+          <button type="button" class="btn" id="reset-dims">Standardwerte</button>
+        </div>
+      </details>
+    </section>
+
+    <section class="group" aria-labelledby="h-tpl">
+      <div class="group-head"><h2 id="h-tpl">Vorlage</h2><span class="tag" id="tpl-state"></span></div>
+      <p class="hint" id="tpl-hint">Vorlagen mit einer Ebene gelten für die gewählte Ebene, Vorlagen mit mehreren Ebenen ersetzen alles.</p>
+      <div class="templates" id="templates"></div>
+      <div id="grid-opts" hidden>
+        <div class="row"><span>Spalten</span><span class="stepper"><button type="button" id="gc-dec" aria-label="Weniger Spalten">−</button><output id="gc-val">4</output><button type="button" id="gc-inc" aria-label="Mehr Spalten">+</button></span></div>
+        <div class="row"><span>Reihen</span><span class="stepper"><button type="button" id="gr-dec" aria-label="Weniger Reihen">−</button><output id="gr-val">3</output><button type="button" id="gr-inc" aria-label="Mehr Reihen">+</button></span></div>
+      </div>
+    </section>
+
+    <section class="group" aria-labelledby="h-layout">
+      <div class="group-head"><h2 id="h-layout">Ebenen &amp; Layout</h2><span class="tag">Draufsicht</span></div>
+      <div class="seg" id="layer-seg" role="group" aria-label="Ebene wählen"></div>
+      <div class="row" id="layer-height-row"></div>
+      <div class="btns">
+        <button type="button" class="btn" id="layer-add">Ebene darüber hinzufügen</button>
+        <button type="button" class="btn danger" id="layer-del">Ebene entfernen</button>
+      </div>
+      <p class="hint">Tippe auf ein Teil, um Fächer, Extras und Aufteilung zu ändern. Leere Felder füllst du mit +.</p>
+      <div class="plan-wrap"><svg id="plan" role="img" aria-label="Draufsicht der gewählten Ebene"></svg></div>
+      <div id="editor"></div>
+    </section>
+
+    <section class="group" aria-labelledby="h-export">
+      <div class="group-head"><h2 id="h-export">Export</h2><span class="tag" id="export-sum"></span></div>
+      <div class="bom-wrap"><table class="bom" id="bom"></table></div>
+      <div class="actions">
+        <button type="button" class="btn primary wide" id="dl-all">Alle Teile als ZIP laden</button>
+        <button type="button" class="btn wide" id="dl-one" disabled>Ausgewähltes Teil laden</button>
+      </div>
+      <p class="hint" id="dl-note">Gleiche Teile werden nur einmal exportiert, die Stückzahl steht im Dateinamen. Drucke ohne Stützen, offene Seite nach oben.</p>
+    </section>
+  </aside>
+
+  <main class="stage" id="stage">
+    <div class="hud">
+      <span class="pill" id="hud-stats">…</span>
+      <span class="hud-btns">
+        <button type="button" class="pill btnlike" id="explode" aria-pressed="false" hidden>Ebenen anheben</button>
+        <button type="button" class="pill btnlike" id="view-reset">Ansicht zurücksetzen</button>
+      </span>
+    </div>
+    <div class="hud hud-bottom">
+      <span class="pill legend"><i></i>Stapelgrenze der Box</span>
+    </div>
+  </main>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+/* ---------- Grundwerte ---------- */
+const DEFAULTS = {
+  box: '12',
+  L: 355, W: 255, H12: 115, H17: 165,
+  slope: 3.5,            // Wandschräge der Box: mm nach außen je 100 mm Höhe und Seite
+  clearance: 15,
+  wall: 1.6, floor: 1.2, divider: 1.2, gap: 0.6,
+  radius: 4, boxRadius: 12, holeRadius: 2,
+  bed: 256,
+};
+const DIM_KEYS = Object.keys(DEFAULTS).filter(k => k !== 'box');
+const MIN_LAYER = 15, MAX_LAYERS = 4, MAX_CELLS = 24, MIN_COMP = 8;
+const LABEL_D = 12, LABEL_T = 1.2;
+
+const b = (x, y, w, h, dx = 1, dy = 1, hp = 100, scoop = false, label = false) => ({ x, y, w, h, dx, dy, hp, scoop, label });
+const grid = (cols, rows, fn) => { const r = []; for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) r.push(fn(x, y)); return r; };
+const TEMPLATES = [
+  { id: 'kabel', name: 'Kabel-Bahnen', desc: '3 lange Bahnen für aufgerollte Kabel',
+    layers: [{ f: 1, cols: 2, rows: 3, bins: grid(2, 3, (x, y) => b(x, y, 1, 1)) }] },
+  { id: 'netzteile', name: 'Kabel & Netzteile', desc: 'Hinten Kabel, vorne 4 hohe Fächer für Netzteile',
+    layers: [{ f: 1, cols: 4, rows: 3, bins: [b(0,0,2,1), b(2,0,2,1), b(0,1,1,2), b(1,1,1,2), b(2,1,1,2), b(3,1,1,2)] }] },
+  { id: 'lader', name: 'Ladegeräte', desc: '6 Teile, zweigeteilt, mit Beschriftung',
+    layers: [{ f: 1, cols: 3, rows: 2, bins: grid(3, 2, (x, y) => b(x, y, 1, 1, 1, 2, 100, false, true)) }] },
+  { id: 'gemischt', name: 'Gemischt', desc: 'Groß, mittel und klein für Kabel, Hubs, Adapter',
+    layers: [{ f: 1, cols: 4, rows: 4, bins: [b(0,0,2,2), b(2,0,2,1,2,1), b(2,1,1,1), b(3,1,1,1), b(0,2,1,2), b(1,2,1,2), b(2,2,2,2,1,2)] }] },
+  { id: 'kleinteile', name: 'Kleinteile', desc: '24 Fächer mit Griffmulde und Beschriftung',
+    layers: [{ f: 1, cols: 6, rows: 4, bins: grid(6, 4, (x, y) => b(x, y, 1, 1, 1, 1, 100, true, true)) }] },
+  { id: 'zwei', name: 'Zwei Ebenen', desc: 'Unten Kabel, oben herausnehmbare Kleinteile-Schalen', multi: true,
+    layers: [
+      { f: 0.6, cols: 2, rows: 3, bins: grid(2, 3, (x, y) => b(x, y, 1, 1)) },
+      { f: 0.4, cols: 4, rows: 2, bins: grid(4, 2, (x, y) => b(x, y, 1, 1, 1, 2, 100, true, true)) },
+    ] },
+  { id: 'drei', name: 'Drei Ebenen', desc: 'Für die hohe Box: Kabel, Lader, Kleinteile', multi: true,
+    layers: [
+      { f: 0.45, cols: 2, rows: 3, bins: grid(2, 3, (x, y) => b(x, y, 1, 1)) },
+      { f: 0.3, cols: 3, rows: 2, bins: grid(3, 2, (x, y) => b(x, y, 1, 1, 1, 2)) },
+      { f: 0.25, cols: 4, rows: 3, bins: grid(4, 3, (x, y) => b(x, y, 1, 1, 1, 1, 100, true, false)) },
+    ] },
+  { id: 'raster', name: 'Eigenes Raster', desc: 'Spalten und Reihen frei wählbar', grid: true },
+];
+
+const STORE_KEY = 'eurobox-inlay-v2';
+let nextId = 1;
+const nid = () => nextId++;
+const withIds = bins => bins.map(o => ({ ...o, id: nid() }));
+const gridLayout = (cols, rows) => ({ cols, rows, bins: withIds(grid(cols, rows, (x, y) => b(x, y, 1, 1))) });
+
+function freshState() {
+  const t = TEMPLATES[0];
+  return { ...structuredClone(DEFAULTS), gridCols: 4, gridRows: 3, active: 0, selected: null, explode: false,
+    layers: t.layers.map(l => ({ f: l.f, tpl: t.id, edited: false, layout: { cols: l.cols, rows: l.rows, bins: withIds(l.bins) } })) };
+}
+function loadState() {
+  try {
+    const raw = localStorage.getItem(STORE_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw);
+    if (!s || !Array.isArray(s.layers) || !s.layers.length || !s.layers.every(l => l.layout && Array.isArray(l.layout.bins))) return null;
+    for (const k of DIM_KEYS) if (typeof s[k] !== 'number' || !isFinite(s[k])) s[k] = DEFAULTS[k];
+    if (s.box !== '12' && s.box !== '17') s.box = '12';
+    s.active = Math.min(Math.max(0, s.active | 0), s.layers.length - 1);
+    const all = s.layers.flatMap(l => l.layout.bins);
+    nextId = Math.max(0, ...all.map(o => o.id || 0)) + 1;
+    all.forEach(o => { if (!o.id) o.id = nid(); });
+    return s;
+  } catch { return null; }
+}
+function saveState() {
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(S)); } catch { /* Speicher nicht verfügbar */ }
+}
+let S = loadState() || freshState();
+
+/* ---------- Abgeleitete Maße ---------- */
+const r2 = v => Math.round(v * 100) / 100;
+const fmt = v => (Math.round(v * 10) / 10).toLocaleString('de-DE');
+const innerH = () => (S.box === '12' ? S.H12 : S.H17);
+const maxH = () => Math.max(MIN_LAYER, innerH() - S.clearance);
+const grow = z => S.slope * z / 100;
+const lay = () => S.layers[S.active].layout;
+const isTop = li => li === S.layers.length - 1;
+
+function layerHeights() {
+  const m = maxH();
+  const sumF = S.layers.reduce((a, l) => a + l.f, 0) || 1;
+  const hs = S.layers.map(l => r2(l.f / sumF * m));
+  hs[hs.length - 1] = r2(m - hs.slice(0, -1).reduce((a, v) => a + v, 0));
+  return hs;
+}
+function setHeights(hs) {
+  const m = maxH();
+  S.layers.forEach((l, i) => { l.f = hs[i] / m; });
+}
+function layerBase(li) { return layerHeights().slice(0, li).reduce((a, v) => a + v, 0); }
+
+function binSpec(bin, li) {
+  const { cols, rows } = S.layers[li].layout;
+  const cw = S.L / cols, ch = S.W / rows;
+  const hs = layerHeights();
+  const zb = hs.slice(0, li).reduce((a, v) => a + v, 0);
+  const hp = isTop(li) ? bin.hp : 100;
+  const H = r2(hs[li] * hp / 100);
+  const bw = r2(bin.w * cw - S.gap), bh = r2(bin.h * ch - S.gap);
+  const R = Math.max(0.5, S.radius), BR = Math.max(R, S.boxRadius);
+  const left = bin.x === 0, right = bin.x + bin.w === cols, back = bin.y === 0, front = bin.y + bin.h === rows;
+  // Modellecken: vorne-links, vorne-rechts, hinten-rechts, hinten-links (hinten = oben im Plan)
+  const radii = [front && left ? BR : R, front && right ? BR : R, back && right ? BR : R, back && left ? BR : R];
+  // Randteile wachsen mit der Wandschräge der Box nach außen
+  const ext = z => [left ? -grow(z) : 0, front ? -grow(z) : 0, bw + (right ? grow(z) : 0), bh + (back ? grow(z) : 0)].map(r2);
+  return {
+    bw, bh, H, dx: bin.dx, dy: bin.dy, radii, base: ext(zb), top: ext(zb + H),
+    wall: S.wall, floor: S.floor, div: S.divider, hr: S.holeRadius, scoop: !!bin.scoop, label: !!bin.label,
+  };
+}
+const specKey = s => [s.bw, s.bh, s.H, s.dx, s.dy, s.radii.join('/'), s.base.join('/'), s.top.join('/'),
+  s.wall, s.floor, s.div, s.hr, s.scoop ? 'S' : '', s.label ? 'L' : ''].join('|');
+const compartment = s => ({
+  w: (s.bw - 2 * s.wall - (s.dx - 1) * s.div) / s.dx,
+  h: (s.bh - 2 * s.wall - (s.dy - 1) * s.div) / s.dy,
+});
+const outerSize = s => ({ w: s.top[2] - s.top[0], h: s.top[3] - s.top[1] });
+const fitsBed = s => { const o = outerSize(s); return o.w <= S.bed && o.h <= S.bed && s.H <= S.bed; };
+const scoopR = (s, c) => Math.min(18, c.h * 0.4, (s.H - s.floor) * 0.6);
+const scoopOk = (s, c) => scoopR(s, c) >= 5;
+const labelOk = (s, c) => c.h >= LABEL_D + 12 && s.H - s.floor >= LABEL_D + LABEL_T + 8;
+const maxDiv = (len, wall, div) => Math.max(1, Math.min(12, Math.floor((len - 2 * wall + div) / (MIN_COMP + div))));
+
+/* ---------- Geometrie ---------- */
+// Abgerundetes Rechteck, gegen den Uhrzeigersinn, immer gleich viele Punkte (für die schräge Außenwand)
+function rrect(x0, y0, x1, y1, radii, seg = 8) {
+  const m = Math.min(x1 - x0, y1 - y0) / 2 - 0.05;
+  const corners = [[x0, y0, 180, 1, 1], [x1, y0, 270, -1, 1], [x1, y1, 0, -1, -1], [x0, y1, 90, 1, -1]];
+  const pts = [];
+  corners.forEach(([cx, cy, a0, sx, sy], i) => {
+    const r = Math.max(0.3, Math.min(radii[i], m));
+    const ox = cx + sx * r, oy = cy + sy * r;
+    for (let k = 0; k <= seg; k++) {
+      const a = (a0 + 90 * k / seg) * Math.PI / 180;
+      pts.push([ox + r * Math.cos(a), oy + r * Math.sin(a)]);
+    }
+  });
+  return pts;
+}
+// Profil in der Y-Z-Ebene (gegen den Uhrzeigersinn, vom ersten Punkt aus fächerbar) entlang X extrudieren
+function extrudeX(tri, prof, xa, xb) {
+  const n = prof.length, A = p => [xa, p[0], p[1]], B = p => [xb, p[0], p[1]];
+  for (let k = 1; k < n - 1; k++) { tri(B(prof[0]), B(prof[k]), B(prof[k + 1])); tri(A(prof[0]), A(prof[k + 1]), A(prof[k])); }
+  for (let k = 0; k < n; k++) {
+    const a = prof[k], q = prof[(k + 1) % n];
+    tri(A(a), A(q), B(q)); tri(A(a), B(q), B(a));
+  }
+}
+
+function buildBin(s) {
+  const T = [];
+  const tri = (a, b, c) => T.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]);
+  const P = (p, z) => [p[0], p[1], z];
+  const H = s.H, F = s.floor;
+  const ob = rrect(...s.base, s.radii), ot = rrect(...s.top, s.radii);
+  const c = compartment(s);
+  const hr = Math.max(0, Math.min(s.hr, c.w / 2 - 0.1, c.h / 2 - 0.1));
+  const holes = [];
+  for (let j = 0; j < s.dy; j++) for (let i = 0; i < s.dx; i++) {
+    const x0 = s.wall + i * (c.w + s.div), y0 = s.wall + j * (c.h + s.div);
+    // Fächer in den Außenecken folgen dem Eckradius, damit die Wand überall trägt
+    const isCorner = [i === 0 && j === 0, i === s.dx - 1 && j === 0, i === s.dx - 1 && j === s.dy - 1, i === 0 && j === s.dy - 1];
+    const rad = isCorner.map((on, k) => on ? Math.max(hr, s.radii[k] - s.wall) : hr);
+    holes.push(rrect(x0, y0, x0 + c.w, y0 + c.h, rad));
+    // Extras als eigene Körper, die mit Wand und Boden überlappen (Slicer vereinen sie)
+    const xa = x0 + Math.max(rad[0], rad[3]), xb = x0 + c.w - Math.max(rad[1], rad[2]);
+    if (s.scoop && scoopOk(s, c) && xb - xa > 2) {
+      const R = scoopR(s, c), e = 0.3, prof = [[y0 - e, F - e], [y0 + R, F - e], [y0 + R, F]];
+      for (let k = 1; k < 12; k++) { const a = (270 - 90 * k / 12) * Math.PI / 180; prof.push([y0 + R + R * Math.cos(a), F + R + R * Math.sin(a)]); }
+      prof.push([y0, F + R], [y0 - e, F + R]);
+      extrudeX(tri, prof, xa, xb);
+    }
+    if (s.label && labelOk(s, c) && xb - xa > 2) {
+      const y1 = y0 + c.h, e = 0.3;
+      extrudeX(tri, [[y1 + e, H], [y1 - LABEL_D, H], [y1 - LABEL_D, H - LABEL_T], [y1 + e, H - LABEL_T - LABEL_D - e]], xa, xb);
+    }
+  }
+  const n = ob.length;
+  for (let k = 1; k < n - 1; k++) tri(P(ob[0], 0), P(ob[k + 1], 0), P(ob[k], 0));
+  for (let k = 0; k < n; k++) {
+    const q = (k + 1) % n;
+    tri(P(ob[k], 0), P(ob[q], 0), P(ot[q], H)); tri(P(ob[k], 0), P(ot[q], H), P(ot[k], H));
+  }
+  for (const h of holes) {
+    const m = h.length;
+    for (let k = 1; k < m - 1; k++) tri(P(h[0], F), P(h[k], F), P(h[k + 1], F));
+    for (let k = 0; k < m; k++) {
+      const a = h[k], q = h[(k + 1) % m];
+      tri(P(a, F), P(q, H), P(q, F)); tri(P(a, F), P(a, H), P(q, H));
+    }
+  }
+  const v2 = p => new THREE.Vector2(p[0], p[1]);
+  const all = ot.concat(...holes);
+  const faces = THREE.ShapeUtils.triangulateShape(ot.map(v2), holes.map(h => h.map(v2)));
+  for (const [ia, ib, ic] of faces) {
+    const A = all[ia], B = all[ib], C = all[ic];
+    const cz = (B[0] - A[0]) * (C[1] - A[1]) - (B[1] - A[1]) * (C[0] - A[0]);
+    if (cz >= 0) tri(P(A, H), P(B, H), P(C, H)); else tri(P(A, H), P(C, H), P(B, H));
+  }
+  return new Float32Array(T);
+}
+
+/* ---------- STL & ZIP ---------- */
+function toSTL(tris, name) {
+  const n = tris.length / 9;
+  const buf = new ArrayBuffer(84 + n * 50);
+  const dv = new DataView(buf);
+  const head = new TextEncoder().encode(('Eurobox Inlay ' + name).slice(0, 79));
+  new Uint8Array(buf, 0, head.length).set(head);
+  dv.setUint32(80, n, true);
+  let o = 84;
+  for (let t = 0; t < n; t++) {
+    const i = t * 9;
+    const ux = tris[i + 3] - tris[i], uy = tris[i + 4] - tris[i + 1], uz = tris[i + 5] - tris[i + 2];
+    const vx = tris[i + 6] - tris[i], vy = tris[i + 7] - tris[i + 1], vz = tris[i + 8] - tris[i + 2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    const l = Math.hypot(nx, ny, nz) || 1;
+    dv.setFloat32(o, nx / l, true); dv.setFloat32(o + 4, ny / l, true); dv.setFloat32(o + 8, nz / l, true);
+    for (let k = 0; k < 9; k++) dv.setFloat32(o + 12 + k * 4, tris[i + k], true);
+    dv.setUint16(o + 48, 0, true);
+    o += 50;
+  }
+  return new Uint8Array(buf);
+}
+
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; }
+  return t;
+})();
+function crc32(u) { let c = 0xFFFFFFFF; for (let i = 0; i < u.length; i++) c = CRC_TABLE[(c ^ u[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function makeZip(files) {
+  const enc = new TextEncoder();
+  const d = new Date();
+  const time = (d.getHours() << 11) | (d.getMinutes() << 5) | (d.getSeconds() >> 1);
+  const date = ((d.getFullYear() - 1980) << 9) | ((d.getMonth() + 1) << 5) | d.getDate();
+  const local = [], central = [];
+  let off = 0, cdSize = 0;
+  for (const f of files) {
+    const nm = enc.encode(f.name), crc = crc32(f.data), sz = f.data.length;
+    const lh = new DataView(new ArrayBuffer(30));
+    lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint16(6, 0x0800, true);
+    lh.setUint16(10, time, true); lh.setUint16(12, date, true); lh.setUint32(14, crc, true);
+    lh.setUint32(18, sz, true); lh.setUint32(22, sz, true); lh.setUint16(26, nm.length, true);
+    local.push(new Uint8Array(lh.buffer), nm, f.data);
+    const ch = new DataView(new ArrayBuffer(46));
+    ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint16(8, 0x0800, true);
+    ch.setUint16(12, time, true); ch.setUint16(14, date, true); ch.setUint32(16, crc, true);
+    ch.setUint32(20, sz, true); ch.setUint32(24, sz, true); ch.setUint16(28, nm.length, true);
+    ch.setUint32(42, off, true);
+    central.push(new Uint8Array(ch.buffer), nm);
+    off += 30 + nm.length + sz; cdSize += 46 + nm.length;
+  }
+  const end = new DataView(new ArrayBuffer(22));
+  end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true);
+  end.setUint32(12, cdSize, true); end.setUint32(16, off, true);
+  return new Blob([...local, ...central, new Uint8Array(end.buffer)], { type: 'application/zip' });
+}
+
+/* Downloads: im Claude-Viewer über die downloads-Fähigkeit (nur ZIP), sonst normaler Browser-Download */
+let downloadsApi = null;
+const downloadsReady = (async () => {
+  try { if (window.claude && typeof window.claude.use === 'function') downloadsApi = await window.claude.use('downloads'); } catch { downloadsApi = null; }
+})();
+async function offerFile(filename, blob) {
+  if (downloadsApi) {
+    try { await downloadsApi.save({ filename, data: blob }); toast('Gespeichert: ' + filename); }
+    catch (e) {
+      const code = e && e.code;
+      toast(code === 'declined' ? 'Download abgebrochen' : code === 'rate_limited' ? 'Bitte kurz warten und erneut versuchen' : 'Download hier nicht möglich');
+    }
+    return;
+  }
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  toast('Download gestartet: ' + filename);
+}
+
+/* ---------- Teile & Stückliste ---------- */
+function computeParts() {
+  const parts = new Map(), byBin = new Map();
+  S.layers.forEach((l, li) => {
+    [...l.layout.bins].sort((p, q) => p.y - q.y || p.x - q.x).forEach(bin => {
+      const spec = binSpec(bin, li), key = specKey(spec);
+      if (!parts.has(key)) parts.set(key, { key, spec, count: 0, letter: '', ids: [], layers: new Set() });
+      const p = parts.get(key);
+      p.count++; p.ids.push(bin.id); p.layers.add(li + 1);
+      byBin.set(bin.id, p);
+    });
+  });
+  [...parts.values()].forEach((p, i) => { p.letter = i < 26 ? String.fromCharCode(65 + i) : 'Z' + (i - 25); });
+  return { parts: [...parts.values()], byBin };
+}
+function partFileName(p) {
+  const s = p.spec, o = outerSize(s);
+  const div = s.dx * s.dy > 1 ? `_${s.dx}x${s.dy}-faecher` : '';
+  const ext = (s.scoop ? '_mulde' : '') + (s.label ? '_label' : '');
+  return `${p.letter}_ebene${[...p.layers].join('-')}_${Math.round(o.w)}x${Math.round(o.h)}x${Math.round(s.H)}mm${div}${ext}_${p.count}stk.stl`;
+}
+
+/* ---------- Layout-Operationen (gewählte Ebene) ---------- */
+const binById = id => lay().bins.find(o => o.id === id);
+function occupancy() {
+  const { cols, rows, bins } = lay();
+  const g = new Array(cols * rows).fill(0);
+  for (const o of bins) for (let y = o.y; y < o.y + o.h; y++) for (let x = o.x; x < o.x + o.w; x++) g[y * cols + x] = o.id;
+  return g;
+}
+function refine(axis) {
+  const L = lay();
+  if (axis === 'x') { L.cols *= 2; L.bins.forEach(o => { o.x *= 2; o.w *= 2; }); }
+  else { L.rows *= 2; L.bins.forEach(o => { o.y *= 2; o.h *= 2; }); }
+}
+function coarsen() {
+  const L = lay();
+  while (L.cols % 2 === 0 && L.bins.every(o => o.x % 2 === 0 && o.w % 2 === 0)) { L.cols /= 2; L.bins.forEach(o => { o.x /= 2; o.w /= 2; }); }
+  while (L.rows % 2 === 0 && L.bins.every(o => o.y % 2 === 0 && o.h % 2 === 0)) { L.rows /= 2; L.bins.forEach(o => { o.y /= 2; o.h /= 2; }); }
+}
+const canSplit = (bin, axis) => axis === 'x' ? bin.w >= 2 || lay().cols * 2 <= MAX_CELLS : bin.h >= 2 || lay().rows * 2 <= MAX_CELLS;
+function split(bin, axis) {
+  if (!canSplit(bin, axis)) return;
+  if (axis === 'x') {
+    if (bin.w < 2) refine('x');
+    const w1 = Math.floor(bin.w / 2), half = Math.max(1, Math.round(bin.dx / 2));
+    lay().bins.push({ ...bin, id: nid(), x: bin.x + w1, w: bin.w - w1, dx: half });
+    bin.w = w1; bin.dx = half;
+  } else {
+    if (bin.h < 2) refine('y');
+    const h1 = Math.floor(bin.h / 2), half = Math.max(1, Math.round(bin.dy / 2));
+    lay().bins.push({ ...bin, id: nid(), y: bin.y + h1, h: bin.h - h1, dy: half });
+    bin.h = h1; bin.dy = half;
+  }
+  clampDividers();
+}
+const neighbor = (bin, dir) => lay().bins.find(o => dir === 'right'
+  ? o.x === bin.x + bin.w && o.y === bin.y && o.h === bin.h
+  : o.y === bin.y + bin.h && o.x === bin.x && o.w === bin.w);
+function merge(bin, dir) {
+  const n = neighbor(bin, dir);
+  if (!n) return;
+  if (dir === 'right') { bin.w += n.w; bin.dx += n.dx; } else { bin.h += n.h; bin.dy += n.dy; }
+  lay().bins = lay().bins.filter(o => o !== n);
+  coarsen(); clampDividers();
+}
+function clampDividers() {
+  S.layers.forEach((l, li) => l.layout.bins.forEach(o => {
+    const s = binSpec(o, li);
+    o.dx = Math.min(o.dx, maxDiv(s.bw, S.wall, S.divider));
+    o.dy = Math.min(o.dy, maxDiv(s.bh, S.wall, S.divider));
+  }));
+}
+function markEdited() { S.layers[S.active].edited = true; }
+
+/* ---------- Ebenen ---------- */
+function addLayer() {
+  if (S.layers.length >= MAX_LAYERS) return;
+  const hs = layerHeights(), last = hs.length - 1;
+  if (hs[last] < MIN_LAYER * 2) { toast(`Die oberste Ebene ist zu flach zum Teilen (min. ${MIN_LAYER * 2} mm)`); return; }
+  const half = r2(hs[last] / 2);
+  hs[last] = r2(hs[last] - half); hs.push(half);
+  S.layers.push({ f: 0, tpl: null, edited: true, layout: { cols: 4, rows: 3, bins: withIds(grid(4, 3, (x, y) => b(x, y, 1, 1, 1, 1, 100, true, true))) } });
+  setHeights(hs);
+  S.active = S.layers.length - 1; S.selected = null;
+  clampDividers();
+}
+function removeLayer() {
+  if (S.layers.length < 2) return;
+  const hs = layerHeights(), i = S.active, into = i > 0 ? i - 1 : 1;
+  hs[into] += hs[i]; hs.splice(i, 1);
+  S.layers.splice(i, 1);
+  setHeights(hs);
+  S.active = Math.max(0, i - 1); S.selected = null;
+  clampDividers();
+}
+function changeLayerHeight(d) {
+  const hs = layerHeights(), i = S.active, last = hs.length - 1;
+  if (i === last) return;
+  const nh = Math.max(MIN_LAYER, Math.min(hs[i] + d, hs[i] + hs[last] - MIN_LAYER));
+  hs[last] = r2(hs[last] - (nh - hs[i])); hs[i] = r2(nh);
+  setHeights(hs); clampDividers();
+}
+
+/* ---------- UI ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+let toastTimer;
+function toast(msg) {
+  const t = $('#toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600);
+}
+
+function miniSVG(t) {
+  const L = 355, W = 255;
+  const src = t.grid ? [{ cols: 4, rows: 3, bins: grid(4, 3, (x, y) => b(x, y, 1, 1)) }] : t.layers;
+  const top = src[src.length - 1];
+  const cw = L / top.cols, ch = W / top.rows, g = 6;
+  let s = `<svg viewBox="-4 -4 ${L + 8} ${W + 8}" aria-hidden="true"><rect x="-2" y="-2" width="${L + 4}" height="${W + 4}" rx="16" fill="none" stroke="var(--fg-3)" stroke-width="3"/>`;
+  if (src.length > 1) s += src.slice(0, -1).map((_, i) => `<rect x="${8 + i * 8}" y="${-12 - i * 8}" width="${L - 16 - i * 16}" height="6" rx="3" fill="var(--fg-3)" opacity=".5"/>`).join('');
+  for (const o of top.bins) {
+    const x = o.x * cw + g / 2, y = o.y * ch + g / 2, w = o.w * cw - g, h = o.h * ch - g;
+    s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="var(--surface)" stroke="var(--fg-3)" stroke-width="3"${t.grid ? ' stroke-dasharray="10 8"' : ''}/>`;
+    for (let i = 1; i < o.dx; i++) { const xx = x + w * i / o.dx; s += `<line x1="${xx}" y1="${y + 8}" x2="${xx}" y2="${y + h - 8}" stroke="var(--fg-3)" stroke-width="3"/>`; }
+    for (let j = 1; j < o.dy; j++) { const yy = y + h * j / o.dy; s += `<line x1="${x + 8}" y1="${yy}" x2="${x + w - 8}" y2="${yy}" stroke="var(--fg-3)" stroke-width="3"/>`; }
+  }
+  return s.replace('viewBox="-4 -4', src.length > 1 ? `viewBox="-4 ${-8 - src.length * 8}` : 'viewBox="-4 -4')
+    .replace(`${W + 8}" aria`, `${W + (src.length > 1 ? 4 + src.length * 8 : 8)}" aria`) + '</svg>';
+}
+function renderTemplates() {
+  const cur = S.layers[S.active].tpl;
+  $('#templates').innerHTML = TEMPLATES.map(t =>
+    `<button type="button" class="tpl" id="tpl-${t.id}" data-tpl="${t.id}" aria-pressed="${t.id === cur}">${miniSVG(t)}<strong>${esc(t.name)}</strong><small>${esc(t.desc)}</small></button>`).join('');
+}
+
+function renderBox() {
+  document.querySelectorAll('#box-seg button').forEach(btn => btn.setAttribute('aria-pressed', String(btn.dataset.box === S.box)));
+  $('#f-area').textContent = `${fmt(S.L)} × ${fmt(S.W)}`;
+  $('#f-height').textContent = `${fmt(maxH())} mm`;
+  $('#f-height-note').textContent = `Einsätze gesamt (${fmt(innerH())} − ${fmt(S.clearance)} Stapel-Freiraum)`;
+  document.querySelectorAll('.fields input').forEach(inp => {
+    const k = inp.dataset.k;
+    const v = k === 'H' ? innerH() : k === 'Ltop' ? r2(S.L + 2 * grow(innerH())) : S[k];
+    if (document.activeElement !== inp) inp.value = v;
+  });
+}
+
+function renderLayers() {
+  const hs = layerHeights(), n = S.layers.length;
+  $('#layer-seg').innerHTML = S.layers.map((l, i) =>
+    `<button type="button" id="layer-${i}" data-layer="${i}" aria-pressed="${i === S.active}">${n === 1 ? 'Ebene 1' : i === 0 ? '1 · unten' : i === n - 1 ? `${i + 1} · oben` : i + 1}</button>`).join('');
+  const i = S.active;
+  const z0 = layerBase(i);
+  const row = $('#layer-height-row');
+  if (n === 1) row.innerHTML = `<span>Höhe</span><span class="tag">${fmt(hs[0])} mm, volle Höhe</span>`;
+  else if (i === n - 1) row.innerHTML = `<span>Höhe <small class="tag">ab ${fmt(z0)} mm</small></span><span class="tag">${fmt(hs[i])} mm, Rest bis zur Stapelgrenze</span>`;
+  else row.innerHTML = `<span>Höhe <small class="tag">ab ${fmt(z0)} mm</small></span>${stepper('lh', fmt(hs[i]) + ' mm', hs[i] <= MIN_LAYER, hs[n - 1] <= MIN_LAYER, 'Höhe der Ebene')}`;
+  $('#layer-add').disabled = n >= MAX_LAYERS;
+  $('#layer-del').disabled = n < 2;
+  $('#explode').hidden = n < 2;
+  $('#explode').setAttribute('aria-pressed', String(!!S.explode));
+  $('#explode').textContent = S.explode ? 'Ebenen absenken' : 'Ebenen anheben';
+}
+
+let partsInfo = computeParts();
+
+function renderPlan() {
+  const svg = $('#plan');
+  const { cols, rows, bins } = lay();
+  const cw = S.L / cols, ch = S.W / rows, pad = 6;
+  svg.setAttribute('viewBox', `${-pad} ${-pad} ${S.L + pad * 2} ${S.W + pad * 2}`);
+  const fs = Math.max(11, Math.min(26, Math.min(cw, ch) * 0.3));
+  let s = `<rect x="-3" y="-3" width="${S.L + 6}" height="${S.W + 6}" rx="${S.boxRadius + 3}" fill="none" stroke="var(--fg-3)" stroke-width="2"/>`;
+  s += `<text x="${S.L / 2}" y="${S.W + 1}" text-anchor="middle" font-size="9" fill="var(--fg-3)" style="font-family:var(--font)">vorne</text>`;
+  const occ = occupancy();
+  for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
+    if (occ[y * cols + x]) continue;
+    const X = x * cw + S.gap / 2 + 2, Y = y * ch + S.gap / 2 + 2, w = cw - S.gap - 4, h = ch - S.gap - 4;
+    s += `<g class="empty" data-cell="${x},${y}" role="button" aria-label="Teil hinzufügen"><rect x="${X}" y="${Y}" width="${w}" height="${h}" rx="6" fill="transparent" stroke="var(--fg-3)" stroke-width="1.5" stroke-dasharray="5 5"/>` +
+      `<text x="${X + w / 2}" y="${Y + h / 2}" text-anchor="middle" dominant-baseline="central" font-size="${fs}" fill="var(--fg-3)">+</text></g>`;
+  }
+  for (const o of bins) {
+    const spec = binSpec(o, S.active);
+    const p = partsInfo.byBin.get(o.id);
+    const sel = o.id === S.selected, warn = !fitsBed(spec);
+    const x = o.x * cw + S.gap / 2, y = o.y * ch + S.gap / 2, w = spec.bw, h = spec.bh;
+    const fill = sel ? 'var(--accent-soft)' : warn ? 'var(--warn-soft)' : 'var(--surface)';
+    const stroke = sel ? 'var(--accent)' : warn ? 'var(--warn)' : 'var(--fg-2)';
+    s += `<g class="bin" data-id="${o.id}" role="button" aria-label="Teil ${p ? p.letter : ''}">`;
+    s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${Math.min(S.radius, w / 2, h / 2)}" fill="${fill}" stroke="${stroke}" stroke-width="${sel ? 3 : 1.5}"/>`;
+    for (let i = 1; i < o.dx; i++) { const xx = x + w * i / o.dx; s += `<line x1="${xx}" y1="${y + 4}" x2="${xx}" y2="${y + h - 4}" stroke="${stroke}" stroke-width="1" opacity=".7"/>`; }
+    for (let j = 1; j < o.dy; j++) { const yy = y + h * j / o.dy; s += `<line x1="${x + 4}" y1="${yy}" x2="${x + w - 4}" y2="${yy}" stroke="${stroke}" stroke-width="1" opacity=".7"/>`; }
+    const cc = compartment(spec);
+    for (let j = 0; j < o.dy; j++) for (let i = 0; i < o.dx; i++) {
+      const cx0 = x + w * i / o.dx + 5, cxw = w / o.dx - 10, top = y + h * j / o.dy, bot = y + h * (j + 1) / o.dy;
+      if (o.label && labelOk(spec, cc)) s += `<rect x="${cx0}" y="${top + 3}" width="${cxw}" height="${Math.min(LABEL_D, (bot - top) / 4)}" rx="2" fill="${stroke}" opacity=".18"/>`;
+      if (o.scoop && scoopOk(spec, cc)) s += `<path d="M${cx0} ${bot - 4} Q${cx0 + cxw / 2} ${bot - 4 - scoopR(spec, cc) * 0.9} ${cx0 + cxw} ${bot - 4}" fill="none" stroke="${stroke}" stroke-width="1" opacity=".55"/>`;
+    }
+    const label = (p ? p.letter : '') + (isTop(S.active) && o.hp < 100 ? ` · ${o.hp}%` : '');
+    s += `<text x="${x + w / 2}" y="${y + h / 2}" text-anchor="middle" dominant-baseline="central" font-size="${fs}" font-weight="600" fill="${sel ? 'var(--accent)' : 'var(--fg)'}" style="font-family:var(--font)">${label}</text></g>`;
+  }
+  svg.innerHTML = s;
+}
+
+function stepper(id, value, minReached, maxReached, label) {
+  return `<span class="stepper"><button type="button" id="${id}-dec" data-step="${id}" data-d="-1" aria-label="${label} verringern" ${minReached ? 'disabled' : ''}>−</button>` +
+    `<output>${value}</output><button type="button" id="${id}-inc" data-step="${id}" data-d="1" aria-label="${label} erhöhen" ${maxReached ? 'disabled' : ''}>+</button></span>`;
+}
+function toggle(id, on, label) {
+  return `<button type="button" class="switch" role="switch" id="${id}" aria-checked="${!!on}" aria-label="${label}"><span></span></button>`;
+}
+function renderEditor() {
+  const el = $('#editor');
+  const bin = binById(S.selected);
+  if (!bin) { el.innerHTML = ''; return; }
+  const spec = binSpec(bin, S.active);
+  const p = partsInfo.byBin.get(bin.id);
+  const c = compartment(spec), o = outerSize(spec);
+  const mx = maxDiv(spec.bw, S.wall, S.divider), my = maxDiv(spec.bh, S.wall, S.divider);
+  const top = isTop(S.active);
+  el.innerHTML = `<div class="editor">
+    <div class="ed-head"><strong>Teil ${p ? p.letter : ''}</strong><span>${fmt(o.w)} × ${fmt(o.h)} × ${fmt(spec.H)} mm</span></div>
+    ${fitsBed(spec) ? '' : `<span class="chip warn">Größer als dein Druckbett (${fmt(S.bed)} mm), bitte teilen</span>`}
+    <div class="row"><span>Fächer nebeneinander</span>${stepper('ed-dx', bin.dx, bin.dx <= 1, bin.dx >= mx, 'Fächer nebeneinander')}</div>
+    <div class="row"><span>Fächer hintereinander</span>${stepper('ed-dy', bin.dy, bin.dy <= 1, bin.dy >= my, 'Fächer hintereinander')}</div>
+    <p class="hint">Ein Fach misst innen ${fmt(c.w)} × ${fmt(c.h)} mm bei ${fmt(spec.H - S.floor)} mm Tiefe.</p>
+    ${top ? `<div class="row"><span>Höhe</span><div class="seg" role="group" aria-label="Höhe" style="min-width:180px">
+      ${[[100, 'Voll'], [75, '¾'], [50, '½'], [33, '⅓']].map(([v, t]) => `<button type="button" id="ed-hp-${v}" data-hp="${v}" aria-pressed="${bin.hp === v}">${t}</button>`).join('')}
+    </div></div>` : '<p class="hint">Teile unter einer anderen Ebene haben immer volle Ebenen-Höhe, damit die Ebene darüber eben aufliegt.</p>'}
+    <div class="row"><span>Griffmulde vorne${scoopOk(spec, c) ? '' : ' <small class="tag">(Fach zu klein)</small>'}</span>${toggle('ed-scoop', bin.scoop, 'Griffmulde')}</div>
+    <div class="row"><span>Beschriftungsfeld hinten${labelOk(spec, c) ? '' : ' <small class="tag">(Fach zu klein)</small>'}</span>${toggle('ed-label', bin.label, 'Beschriftungsfeld')}</div>
+    <div class="btns">
+      <button type="button" class="btn" id="ed-split-x" ${canSplit(bin, 'x') ? '' : 'disabled'}>Teilen ⟷</button>
+      <button type="button" class="btn" id="ed-split-y" ${canSplit(bin, 'y') ? '' : 'disabled'}>Teilen ↕</button>
+      <button type="button" class="btn" id="ed-merge-r" ${neighbor(bin, 'right') ? '' : 'disabled'}>Mit rechtem verbinden</button>
+      <button type="button" class="btn" id="ed-merge-d" ${neighbor(bin, 'down') ? '' : 'disabled'}>Mit vorderem verbinden</button>
+      <button type="button" class="btn danger" id="ed-del">Entfernen</button>
+    </div>
+    <button type="button" class="btn" id="ed-all">Einstellungen auf alle Teile dieser Ebene übertragen</button>
+  </div>`;
+}
+
+function renderBom() {
+  const rows = partsInfo.parts.map(p => {
+    const s = p.spec, o = outerSize(s);
+    const sel = S.selected && p.ids.includes(S.selected);
+    return `<tr class="${sel ? 'sel' : ''}"><td><span class="letter">${p.letter}</span></td><td>${[...p.layers].join(', ')}</td>
+      <td>${Math.round(o.w)} × ${Math.round(o.h)} × ${Math.round(s.H)}</td>
+      <td>${s.dx * s.dy}</td><td>${p.count}×</td>
+      <td>${fitsBed(s) ? '<span class="chip ok">passt</span>' : '<span class="chip warn">zu groß</span>'}</td></tr>`;
+  }).join('');
+  $('#bom').innerHTML = `<thead><tr><th>Teil</th><th>Ebene</th><th>Maß in mm</th><th>Fächer</th><th>Stück</th><th>Druckbett</th></tr></thead><tbody>${rows}</tbody>`;
+  const total = S.layers.reduce((a, l) => a + l.layout.bins.length, 0);
+  $('#export-sum').textContent = `${total} Teile, ${partsInfo.parts.length} verschiedene`;
+  $('#dl-all').disabled = total === 0;
+  $('#dl-one').disabled = !binById(S.selected);
+  const L = S.layers[S.active];
+  const t = TEMPLATES.find(x => x.id === L.tpl);
+  $('#tpl-state').textContent = `Ebene ${S.active + 1}: ` + (t ? (L.edited ? `${t.name}, angepasst` : t.name) : 'eigenes Layout');
+  $('#grid-opts').hidden = L.tpl !== 'raster';
+  $('#gc-val').textContent = S.gridCols; $('#gr-val').textContent = S.gridRows;
+  $('#hud-stats').textContent = `${S.layers.length} ${S.layers.length === 1 ? 'Ebene' : 'Ebenen'} · ${total} Teile · ${fmt(maxH())} mm hoch`;
+}
+
+function update({ rebuild = true } = {}) {
+  partsInfo = computeParts();
+  renderBox(); renderLayers(); renderTemplates(); renderPlan(); renderEditor(); renderBom();
+  if (scene) { if (rebuild) rebuildScene(); else recolor(); }
+  saveState();
+}
+
+/* ---------- Events ---------- */
+$('#box-seg').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-box]'); if (!btn) return;
+  S.box = btn.dataset.box; clampDividers(); update(); fitView();
+});
+document.querySelectorAll('.fields input').forEach(inp => inp.addEventListener('change', () => {
+  const k = inp.dataset.k;
+  let v = parseFloat(String(inp.value).replace(',', '.'));
+  if (!isFinite(v)) { renderBox(); return; }
+  v = Math.min(parseFloat(inp.max), Math.max(parseFloat(inp.min), v));
+  if (k === 'H') { if (S.box === '12') S.H12 = v; else S.H17 = v; }
+  else if (k === 'Ltop') S.slope = r2(Math.max(0, Math.min(15, (v - S.L) / 2 / innerH() * 100)));
+  else S[k] = v;
+  clampDividers(); update(); fitView();
+}));
+$('#reset-dims').addEventListener('click', () => {
+  for (const k of DIM_KEYS) S[k] = DEFAULTS[k];
+  clampDividers(); update(); fitView(); toast('Standardmaße wiederhergestellt');
+});
+$('#templates').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-tpl]'); if (!btn) return;
+  const t = TEMPLATES.find(x => x.id === btn.dataset.tpl);
+  S.selected = null;
+  if (t.multi) {
+    S.layers = t.layers.map(l => ({ f: l.f, tpl: t.id, edited: false, layout: { cols: l.cols, rows: l.rows, bins: withIds(l.bins) } }));
+    S.active = S.layers.length - 1;
+    if (S.box === '12' && t.layers.length > 2) toast('Tipp: Drei Ebenen passen besser in die 17er-Box');
+  } else {
+    const src = t.grid ? gridLayout(S.gridCols, S.gridRows) : { cols: t.layers[0].cols, rows: t.layers[0].rows, bins: withIds(t.layers[0].bins) };
+    Object.assign(S.layers[S.active], { tpl: t.id, edited: false, layout: src });
+  }
+  clampDividers(); update();
+});
+function setGrid(dc, dr) {
+  S.gridCols = Math.min(8, Math.max(1, S.gridCols + dc));
+  S.gridRows = Math.min(8, Math.max(1, S.gridRows + dr));
+  Object.assign(S.layers[S.active], { tpl: 'raster', edited: false, layout: gridLayout(S.gridCols, S.gridRows) });
+  S.selected = null; clampDividers(); update();
+}
+$('#gc-dec').addEventListener('click', () => setGrid(-1, 0));
+$('#gc-inc').addEventListener('click', () => setGrid(1, 0));
+$('#gr-dec').addEventListener('click', () => setGrid(0, -1));
+$('#gr-inc').addEventListener('click', () => setGrid(0, 1));
+
+$('#layer-seg').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-layer]'); if (!btn) return;
+  S.active = Number(btn.dataset.layer); S.selected = null; update({ rebuild: false });
+});
+$('#layer-height-row').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-step]'); if (!btn || btn.disabled) return;
+  changeLayerHeight(5 * Number(btn.dataset.d)); update();
+  document.getElementById(btn.id)?.focus();
+});
+$('#layer-add').addEventListener('click', () => { addLayer(); update(); });
+$('#layer-del').addEventListener('click', () => { removeLayer(); update(); });
+$('#explode').addEventListener('click', () => { S.explode = !S.explode; update(); fitView(); });
+
+function select(id) { S.selected = id; update({ rebuild: false }); }
+$('#plan').addEventListener('click', e => {
+  const g = e.target.closest('g');
+  if (!g) { select(null); return; }
+  if (g.dataset.id) { const id = Number(g.dataset.id); select(S.selected === id ? null : id); return; }
+  if (g.dataset.cell) {
+    const [x, y] = g.dataset.cell.split(',').map(Number);
+    const nb = { ...b(x, y, 1, 1), id: nid() };
+    lay().bins.push(nb); S.selected = nb.id; markEdited();
+    update();
+  }
+});
+$('#editor').addEventListener('click', e => {
+  const bin = binById(S.selected); if (!bin) return;
+  const btn = e.target.closest('button'); if (!btn || btn.disabled) return;
+  const spec = binSpec(bin, S.active);
+  if (btn.dataset.step) {
+    const d = Number(btn.dataset.d);
+    if (btn.dataset.step === 'ed-dx') bin.dx = Math.min(maxDiv(spec.bw, S.wall, S.divider), Math.max(1, bin.dx + d));
+    else bin.dy = Math.min(maxDiv(spec.bh, S.wall, S.divider), Math.max(1, bin.dy + d));
+  } else if (btn.dataset.hp) bin.hp = Number(btn.dataset.hp);
+  else if (btn.id === 'ed-scoop') bin.scoop = !bin.scoop;
+  else if (btn.id === 'ed-label') bin.label = !bin.label;
+  else if (btn.id === 'ed-all') {
+    for (const o of lay().bins) Object.assign(o, { hp: bin.hp, scoop: bin.scoop, label: bin.label, dx: bin.dx, dy: bin.dy });
+    clampDividers(); toast('Auf alle Teile dieser Ebene übertragen');
+  }
+  else if (btn.id === 'ed-split-x') split(bin, 'x');
+  else if (btn.id === 'ed-split-y') split(bin, 'y');
+  else if (btn.id === 'ed-merge-r') merge(bin, 'right');
+  else if (btn.id === 'ed-merge-d') merge(bin, 'down');
+  else if (btn.id === 'ed-del') { lay().bins = lay().bins.filter(o => o !== bin); S.selected = null; coarsen(); }
+  else return;
+  markEdited();
+  const focusId = btn.id;
+  update();
+  const again = document.getElementById(focusId);
+  if (again && !again.disabled) again.focus();
+});
+
+$('#dl-all').addEventListener('click', async () => {
+  await downloadsReady;
+  const files = partsInfo.parts.map(p => ({ name: partFileName(p), data: toSTL(buildBin(p.spec), p.letter) }));
+  const box = S.box === '12' ? '40x30x12' : '40x30x17';
+  const hs = layerHeights();
+  const lines = [
+    `Eurobox Inlay für ${box} cm`,
+    `Innenfläche am Boden ${fmt(S.L)} x ${fmt(S.W)} mm, Einsätze gesamt ${fmt(maxH())} mm hoch`,
+    `Wandschräge ${fmt(S.slope)} mm je 100 mm, Wand ${S.wall} mm, Boden ${S.floor} mm, Trennwand ${S.divider} mm, Spiel ${S.gap} mm`,
+    '',
+    'Ebenen (von unten):',
+    ...hs.map((h, i) => `Ebene ${i + 1}: ${fmt(h)} mm hoch, ab ${fmt(layerBase(i))} mm`),
+    '',
+    'Teile:',
+    ...partsInfo.parts.map(p => { const o = outerSize(p.spec); return `${p.letter}: ${p.count}x, Ebene ${[...p.layers].join('/')}, ${fmt(o.w)} x ${fmt(o.h)} x ${fmt(p.spec.H)} mm, ${p.spec.dx * p.spec.dy} Fächer${p.spec.scoop ? ', Griffmulde' : ''}${p.spec.label ? ', Beschriftungsfeld' : ''}${fitsBed(p.spec) ? '' : '  (größer als Druckbett!)'}`; }),
+    '',
+    'Druck: offene Seite nach oben, ohne Stützen. Erst die untere Ebene einlegen, dann die nächste darauf.',
+  ];
+  files.push({ name: 'stueckliste.txt', data: new TextEncoder().encode(lines.join('\r\n')) });
+  await offerFile(`eurobox-inlay-${box}.zip`, makeZip(files));
+});
+$('#dl-one').addEventListener('click', async () => {
+  await downloadsReady;
+  const p = partsInfo.byBin.get(S.selected); if (!p) return;
+  const name = partFileName(p);
+  const stl = toSTL(buildBin(p.spec), p.letter);
+  if (downloadsApi) await offerFile(name.replace(/\.stl$/, '.zip'), makeZip([{ name, data: stl }]));
+  else await offerFile(name, new Blob([stl], { type: 'model/stl' }));
+});
+
+/* ---------- 3D ---------- */
+let scene, camera, renderer, controls, world, binsGroup, shellGroup;
+const mats = {};
+const stage = $('#stage');
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const EXPLODE = 45;
+
+function initThree() {
+  try {
+    renderer = new THREE.WebGLRenderer({ antialias: true });
+  } catch {
+    stage.insertAdjacentHTML('beforeend', '<div class="stage-msg">Die 3D-Vorschau braucht WebGL. Layout und Export funktionieren trotzdem.</div>');
+    return;
+  }
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  stage.prepend(renderer.domElement);
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(35, 1, 1, 5000);
+  controls = new OrbitControls(camera, renderer.domElement);
+  controls.enableDamping = true;
+  controls.dampingFactor = 0.12;
+  controls.maxPolarAngle = Math.PI * 0.49;
+  controls.addEventListener('change', requestRender);
+
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8a90, 1.6));
+  const sun = new THREE.DirectionalLight(0xffffff, 1.6);
+  sun.position.set(-300, 600, 400);
+  scene.add(sun);
+  const fill = new THREE.DirectionalLight(0xffffff, 0.5);
+  fill.position.set(400, 200, -300);
+  scene.add(fill);
+
+  world = new THREE.Group();
+  world.rotation.x = -Math.PI / 2; // Modell ist Z-oben, Three.js ist Y-oben
+  scene.add(world);
+  binsGroup = new THREE.Group(); shellGroup = new THREE.Group();
+  world.add(binsGroup, shellGroup);
+
+  mats.bin = new THREE.MeshStandardMaterial({ roughness: 0.55 });
+  mats.dim = new THREE.MeshStandardMaterial({ roughness: 0.55, transparent: true, opacity: 0.35, depthWrite: false });
+  mats.sel = new THREE.MeshStandardMaterial({ roughness: 0.45 });
+  mats.warn = new THREE.MeshStandardMaterial({ roughness: 0.55 });
+  mats.edge = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.35 });
+  mats.edgeDim = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.12 });
+  mats.shell = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.6 });
+  mats.floor = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.18, side: THREE.DoubleSide, depthWrite: false });
+  mats.limit = new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.1, side: THREE.DoubleSide, depthWrite: false });
+  mats.limitLine = new THREE.LineBasicMaterial();
+  applyColors();
+
+  new ResizeObserver(resize).observe(stage);
+  resize();
+
+  let down = null;
+  renderer.domElement.addEventListener('pointerdown', e => { down = { x: e.clientX, y: e.clientY }; });
+  renderer.domElement.addEventListener('pointerup', e => {
+    if (!down || Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5) { down = null; return; }
+    down = null;
+    const r = renderer.domElement.getBoundingClientRect();
+    const ndc = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    const ray = new THREE.Raycaster(); ray.setFromCamera(ndc, camera);
+    const hit = ray.intersectObjects(binsGroup.children.filter(o => o.isMesh), false)[0];
+    if (!hit) { select(null); return; }
+    const { id, li } = hit.object.userData;
+    if (li !== S.active) S.active = li;
+    S.selected = id; update({ rebuild: false });
+  });
+
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { applyColors(); requestRender(); });
+  new MutationObserver(() => { applyColors(); requestRender(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+}
+
+function applyColors() {
+  if (!scene) return;
+  scene.background = new THREE.Color(css('--scene'));
+  mats.bin.color.set(css('--bin'));
+  mats.dim.color.set(css('--bin'));
+  mats.sel.color.set(css('--accent'));
+  mats.warn.color.set(css('--limit'));
+  mats.edge.color.set(css('--bin-edge'));
+  mats.edgeDim.color.set(css('--bin-edge'));
+  mats.shell.color.set(css('--shell'));
+  mats.floor.color.set(css('--shell'));
+  mats.limit.color.set(css('--limit'));
+  mats.limitLine.color.set(css('--limit'));
+}
+
+function resize() {
+  const w = stage.clientWidth, h = stage.clientHeight;
+  if (!w || !h) return;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.updateProjectionMatrix();
+  requestRender();
+}
+
+let renderQueued = false;
+function requestRender() {
+  if (renderQueued || !renderer) return;
+  renderQueued = true;
+  requestAnimationFrame(() => {
+    renderQueued = false;
+    const moving = controls.update();
+    renderer.render(scene, camera);
+    if (moving) requestRender();
+  });
+}
+
+const rectLine = (x0, y0, x1, y1, z) => [x0, y0, z, x1, y0, z, x1, y0, z, x1, y1, z, x1, y1, z, x0, y1, z, x0, y1, z, x0, y0, z];
+function rebuildShell() {
+  shellGroup.children.forEach(o => o.geometry.dispose());
+  shellGroup.clear();
+  const L = S.L, W = S.W, H = innerH(), t = grow(H);
+  const v = [
+    ...rectLine(0, 0, L, W, 0),
+    ...rectLine(-t, -t, L + t, W + t, H),
+    0, 0, 0, -t, -t, H, L, 0, 0, L + t, -t, H, L, W, 0, L + t, W + t, H, 0, W, 0, -t, W + t, H,
+  ];
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+  shellGroup.add(new THREE.LineSegments(g, mats.shell));
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(L, W), mats.floor);
+  floor.position.set(L / 2, W / 2, -0.5);
+  shellGroup.add(floor);
+  const mh = maxH(), tm = grow(mh);
+  const lim = new THREE.Mesh(new THREE.PlaneGeometry(L + 2 * tm, W + 2 * tm), mats.limit);
+  lim.position.set(L / 2, W / 2, mh + (S.explode ? EXPLODE * (S.layers.length - 1) : 0));
+  shellGroup.add(lim);
+  const lg = new THREE.BufferGeometry();
+  lg.setAttribute('position', new THREE.Float32BufferAttribute(rectLine(-tm, -tm, L + tm, W + tm, lim.position.z), 3));
+  shellGroup.add(new THREE.LineSegments(lg, mats.limitLine));
+}
+
+function rebuildScene() {
+  binsGroup.children.forEach(o => o.geometry.dispose());
+  binsGroup.clear();
+  const cache = new Map();
+  S.layers.forEach((l, li) => {
+    const cw = S.L / l.layout.cols, ch = S.W / l.layout.rows;
+    const z = layerBase(li) + (S.explode ? EXPLODE * li : 0);
+    for (const bin of l.layout.bins) {
+      const p = partsInfo.byBin.get(bin.id);
+      if (!cache.has(p.key)) {
+        const g = new THREE.BufferGeometry();
+        g.setAttribute('position', new THREE.BufferAttribute(buildBin(p.spec), 3));
+        g.computeVertexNormals();
+        cache.set(p.key, { g, e: new THREE.EdgesGeometry(g, 35) });
+      }
+      const { g, e } = cache.get(p.key);
+      const mesh = new THREE.Mesh(g, mats.bin);
+      mesh.position.set(bin.x * cw + S.gap / 2, S.W - (bin.y + bin.h) * ch + S.gap / 2, z); // Plan-oben = hinten
+      mesh.userData = { id: bin.id, li };
+      const edges = new THREE.LineSegments(e, mats.edge);
+      edges.position.copy(mesh.position);
+      edges.userData = { li };
+      edges.raycast = () => {};
+      binsGroup.add(mesh, edges);
+    }
+  });
+  rebuildShell();
+  world.position.set(-S.L / 2, 0, S.W / 2);
+  recolor();
+}
+
+function recolor() {
+  for (const o of binsGroup.children) {
+    const dim = S.layers.length > 1 && o.userData.li !== S.active;
+    if (!o.isMesh) { o.material = dim ? mats.edgeDim : mats.edge; continue; }
+    const p = partsInfo.byBin.get(o.userData.id);
+    o.material = o.userData.id === S.selected ? mats.sel : dim ? mats.dim : (p && !fitsBed(p.spec) ? mats.warn : mats.bin);
+    o.renderOrder = dim ? 1 : 0;
+  }
+  requestRender();
+}
+
+function fitView() {
+  if (!camera) return;
+  const top = innerH() + (S.explode ? EXPLODE * (S.layers.length - 1) : 0);
+  const size = Math.hypot(S.L, S.W, top * 0.8) * 1.12;
+  const fit = size / 2 / Math.tan(camera.fov * Math.PI / 360) / Math.min(1, camera.aspect);
+  const dir = new THREE.Vector3(0.35, 0.75, 0.9).normalize();
+  controls.target.set(0, top * 0.4, 0);
+  camera.position.copy(dir.multiplyScalar(fit * 1.05)).add(controls.target);
+  camera.lookAt(controls.target);
+  controls.update();
+  requestRender();
+}
+$('#view-reset').addEventListener('click', fitView);
+
+/* ---------- Start ---------- */
+clampDividers();
+initThree();
+update();
+fitView();
+</script>
+</body>
+</html>
