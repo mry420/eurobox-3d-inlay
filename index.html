@@ -88,9 +88,30 @@ button { cursor: pointer; }
   min-width: 0;
   padding-bottom: 8px;
 }
-.brand { display: grid; gap: 2px; padding: 4px 4px 2px; }
-.brand h1 { margin: 0; font-size: 28px; line-height: 1.1; font-weight: 700; letter-spacing: -.02em; text-wrap: balance; }
-.brand p { margin: 0; color: var(--fg-2); font-size: 15px; }
+.brand { display: grid; gap: 12px; padding: 6px 4px 4px; }
+.brand-top { display: flex; align-items: center; gap: 14px; }
+.logo { width: 52px; height: 52px; flex: none; border-radius: 13px; box-shadow: 0 6px 16px rgba(0, 113, 227, .28); }
+.brand h1 { margin: 0; font-size: 30px; line-height: 1.05; font-weight: 700; letter-spacing: -.025em; text-wrap: balance; }
+.brand h1 span { color: var(--accent); }
+.brand p { margin: 0; color: var(--fg-2); font-size: 15px; line-height: 1.4; text-wrap: pretty; }
+.features { display: flex; flex-wrap: wrap; gap: 6px; }
+.features span { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 980px; background: var(--surface); box-shadow: var(--shadow); font-size: 12px; font-weight: 500; color: var(--fg-2); }
+.features svg { width: 13px; height: 13px; color: var(--accent); }
+.step {
+  display: inline-grid; place-items: center;
+  width: 22px; height: 22px; margin-right: 8px; border-radius: 50%;
+  background: var(--accent); color: var(--on-accent);
+  font-size: 12px; font-weight: 700; vertical-align: 2px; font-variant-numeric: tabular-nums;
+}
+.stackviz { background: var(--surface-2); border-radius: var(--r-md); padding: 10px 8px 6px; }
+.stackviz svg { width: 100%; height: auto; display: block; }
+.empty-hint { display: flex; gap: 10px; align-items: center; padding: 12px; border-radius: var(--r-md); background: var(--accent-soft); color: var(--fg); font-size: 13px; }
+.empty-hint svg { width: 22px; height: 22px; flex: none; color: var(--accent); }
+.tips ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; color: var(--fg-2); font-size: 13px; }
+.tips li strong { color: var(--fg); font-weight: 600; }
+.foot { text-align: center; color: var(--fg-3); font-size: 12px; padding: 4px 8px 8px; }
+.btn.primary { display: grid; gap: 1px; }
+.btn.primary small { font-size: 12px; font-weight: 400; opacity: .85; }
 
 .group {
   background: var(--surface);
@@ -261,6 +282,8 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
   pointer-events: none;
 }
 .hud-bottom { top: auto; bottom: 12px; align-items: flex-end; }
+.pill.muted { color: var(--fg-2); font-weight: 400; }
+@media (max-width: 520px) { .pill.muted { display: none; } }
 .pill {
   background: var(--glass);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
@@ -316,12 +339,13 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
 <div class="app">
   <aside class="panel">
     <header class="brand">
-      <h1>Eurobox Inlay</h1>
-      <p>Stapelbare Einsätze für alle gängigen Euroboxen, bündig in der Box und als STL zum Drucken.</p>
+      <div class="brand-top"><svg class="logo" viewBox="0 0 52 52" aria-hidden="true"><defs><linearGradient id="lg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#3a9bff"/><stop offset="1" stop-color="#0060d6"/></linearGradient></defs><rect width="52" height="52" rx="13" fill="url(#lg)"/><path d="M12 31h28l-2.5 10h-23z" fill="#fff" opacity=".55"/><path d="M12 19h28l-2.5 10h-23z" fill="#fff" opacity=".8"/><path d="M14 11h24v6H14z" fill="#fff"/><path d="M26 19v10M19 19v10M33 19v10" stroke="#0a6ae0" stroke-width="1.6"/></svg><h1>Eurobox <span>Inlay</span></h1></div>
+      <p>Ordnung für Kabel, Netzteile und Kleinkram: Einsätze entwerfen, die bündig in deiner Eurobox sitzen, sich in Ebenen stapeln lassen und mit denen die nächste Box noch obendrauf passt.</p>
+      <div class="features"><span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Alle Eurobox-Größen</span><span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Stapelbar</span><span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>STL kostenlos</span><span><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>Läuft im Browser</span></div>
     </header>
 
     <section class="group" aria-labelledby="h-box">
-      <h2 id="h-box">Box</h2>
+      <h2 id="h-box"><span class="step">1</span>Deine Box</h2>
       <div class="field-label">Grundfläche (Außenmaß in cm)</div>
       <div class="seg" id="foot-seg" role="group" aria-label="Grundfläche der Box"></div>
       <div class="row">
@@ -335,6 +359,7 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
         <div class="fact"><b id="f-area">355 × 255</b><span>Innenfläche am Boden (mm)</span></div>
         <div class="fact"><b id="f-height">93 mm</b><span id="f-height-note">max. Einsatzhöhe</span></div>
       </div>
+      <div class="stackviz"><svg id="stack-viz" viewBox="0 0 320 168" role="img" aria-label="Seitenansicht: Einsätze in der Box und Fuß der Box darüber"></svg></div>
       <details class="adv" id="adv">
         <summary>Maße &amp; Druck anpassen</summary>
         <div class="fields">
@@ -358,7 +383,7 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
     </section>
 
     <section class="group" aria-labelledby="h-tpl">
-      <div class="group-head"><h2 id="h-tpl">Vorlage</h2><span class="tag" id="tpl-state"></span></div>
+      <div class="group-head"><h2 id="h-tpl"><span class="step">2</span>Vorlage</h2><span class="tag" id="tpl-state"></span></div>
       <p class="hint" id="tpl-hint">Vorlagen mit einer Ebene gelten für die gewählte Ebene, Vorlagen mit mehreren Ebenen ersetzen alles.</p>
       <div class="templates" id="templates"></div>
       <div id="grid-opts" hidden>
@@ -368,7 +393,7 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
     </section>
 
     <section class="group" aria-labelledby="h-layout">
-      <div class="group-head"><h2 id="h-layout">Ebenen &amp; Layout</h2><span class="tag">Draufsicht</span></div>
+      <div class="group-head"><h2 id="h-layout"><span class="step">3</span>Anpassen</h2><span class="tag">Draufsicht</span></div>
       <div class="seg" id="layer-seg" role="group" aria-label="Ebene wählen"></div>
       <div class="row" id="layer-height-row"></div>
       <div class="btns">
@@ -381,15 +406,26 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
     </section>
 
     <section class="group" aria-labelledby="h-export">
-      <div class="group-head"><h2 id="h-export">Export</h2><span class="tag" id="export-sum"></span></div>
+      <div class="group-head"><h2 id="h-export"><span class="step">4</span>Drucken</h2><span class="tag" id="export-sum"></span></div>
       <div class="bom-wrap"><table class="bom" id="bom"></table></div>
       <div class="actions">
-        <button type="button" class="btn primary wide" id="dl-all">Alle Teile als ZIP laden</button>
+        <button type="button" class="btn primary wide" id="dl-all"><span>Alle Teile als ZIP laden</span><small id="dl-sub"></small></button>
         <button type="button" class="btn wide" id="fit-bed" hidden>Zu große Teile automatisch teilen</button>
         <button type="button" class="btn wide" id="dl-one" disabled>Ausgewähltes Teil laden</button>
       </div>
-      <p class="hint" id="dl-note">Gleiche Teile werden nur einmal exportiert, die Stückzahl steht im Dateinamen. Drucke ohne Stützen, offene Seite nach oben.</p>
+      <p class="hint" id="dl-note">Gleiche Teile werden nur einmal exportiert, die Stückzahl steht im Dateinamen.</p>
     </section>
+
+    <section class="group tips" aria-labelledby="h-tips">
+      <h2 id="h-tips">Tipps zum Drucken</h2>
+      <ul>
+        <li><strong>Ohne Stützen</strong>, offene Seite nach oben. Griffmulden und Beschriftungsfelder sind auf 45° ausgelegt.</li>
+        <li><strong>0,4-mm-Düse, 0,2 mm Schichthöhe:</strong> 1,6 mm Wand sind genau 4 Linien. PLA reicht, PETG ist robuster.</li>
+        <li><strong>Erst ein Teil testen:</strong> Drucke ein Eckteil und probiere den Sitz. Ist es zu stramm, erhöhe das Spiel oder verringere das Innenmaß.</li>
+        <li><strong>Unten anfangen:</strong> Zuerst die untere Ebene einlegen, die nächste liegt eben darauf.</li>
+      </ul>
+    </section>
+    <p class="foot">Stapelhöhen nach Datenblättern von Auer Packaging. Maße anderer Hersteller können abweichen.</p>
   </aside>
 
   <main class="stage" id="stage">
@@ -401,7 +437,8 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
       </span>
     </div>
     <div class="hud hud-bottom">
-      <span class="pill legend"><i></i>Stapelgrenze der Box</span>
+      <span class="pill legend"><i></i>Fuß der Box darüber</span>
+      <span class="pill muted">Ziehen zum Drehen · Tippen wählt ein Teil</span>
     </div>
   </main>
 </div>
@@ -873,6 +910,7 @@ function renderBox() {
   $('#rng-outerH').value = S.outerH;
   $('#stack-toggle').setAttribute('aria-checked', String(S.stacked));
   $('#f-area').textContent = `${fmt(S.L)} × ${fmt(S.W)}`;
+  $('#stack-viz').innerHTML = stackSVG();
   $('#f-height').textContent = `${fmt(maxH())} mm`;
   $('#f-height-note').textContent = S.stacked
     ? `max. Einsatzhöhe (${fmt(S.outerH)} − ${fmt(S.stackLoss)} für die Box darüber)`
@@ -882,6 +920,45 @@ function renderBox() {
     const v = k === 'Ltop' ? r2(S.L + 2 * grow(innerH())) : S[k];
     if (document.activeElement !== inp) inp.value = v;
   });
+}
+
+function stackSVG() {
+  const base = 150, top = 26, bx = 38, bw = 196, tilt = 5;
+  const k = (base - top) / S.outerH, y = mm => base - mm * k;
+  const xl = mm => bx + tilt - tilt * mm / S.outerH, xr = mm => bx + bw - tilt + tilt * mm / S.outerH;
+  const hs = layerHeights(), mh = maxH();
+  let s = '';
+  // Box darüber (nur der untere Teil)
+  if (S.stacked) {
+    const yf = y(mh);
+    const yr = y(S.outerH), L0 = xl(mh) + 7, R0 = xr(mh) - 7, Lr = xl(S.outerH), Rr = xr(S.outerH);
+    const pts = `${L0} ${yf} L${R0} ${yf} L${Rr - 3} ${yr} L${Rr + 3} ${yr - 3} L${Rr + 5} 2 L${Lr - 5} 2 L${Lr - 3} ${yr - 3} L${Lr + 3} ${yr}`;
+    s += `<path d="M${pts} Z" fill="var(--limit)" fill-opacity=".12" stroke="none"/>`;
+    s += `<path d="M${Lr - 5} 2 L${Lr - 3} ${yr - 3} L${Lr + 3} ${yr} L${L0} ${yf} L${R0} ${yf} L${Rr - 3} ${yr} L${Rr + 3} ${yr - 3} L${Rr + 5} 2" fill="none" stroke="var(--limit)" stroke-width="1.5" stroke-dasharray="4 3" stroke-linejoin="round"/>`;
+    s += `<text x="${bx + bw / 2}" y="14" text-anchor="middle" font-size="10.5" fill="var(--limit)">Box darüber</text>`;
+  }
+  // Untere Box
+  s += `<path d="M${xl(S.outerH)} ${y(S.outerH)} L${xl(0)} ${base} L${xr(0)} ${base} L${xr(S.outerH)} ${y(S.outerH)}" fill="none" stroke="var(--fg-2)" stroke-width="2.5" stroke-linejoin="round"/>`;
+  // Einsätze, je Ebene ein Band
+  let z = 0;
+  hs.forEach((h, i) => {
+    const z0 = z + (i === 0 ? BOX_FLOOR : 0), z1 = z + h; z += h;
+    s += `<path d="M${xl(z0) + 2} ${y(z0)} L${xr(z0) - 2} ${y(z0)} L${xr(z1) - 2} ${y(z1) + 1} L${xl(z1) + 2} ${y(z1) + 1} Z" fill="var(--accent)" fill-opacity="${i % 2 ? 0.28 : 0.5}" stroke="var(--accent)" stroke-width="1"/>`;
+    if (hs.length > 1 && y(z0) - y(z1) > 12) s += `<text x="${bx + bw / 2}" y="${(y(z0) + y(z1)) / 2 + 4}" text-anchor="middle" font-size="10" fill="var(--fg)">Ebene ${i + 1}</text>`;
+  });
+  if (hs.length === 1 && y(BOX_FLOOR) - y(mh) > 14) s += `<text x="${bx + bw / 2}" y="${(y(BOX_FLOOR) + y(mh)) / 2 + 4}" text-anchor="middle" font-size="11" fill="var(--fg)">Einsätze</text>`;
+  // Maßlinien
+  const dx = bx + bw + 16, dim = (a, bb, label, col) => {
+    const ya = y(a), yb = y(bb);
+    return `<path d="M${dx - 4} ${ya}h8M${dx - 4} ${yb}h8M${dx} ${ya}V${yb}" stroke="${col}" stroke-width="1.2" fill="none"/>` +
+      `<text x="${dx + 9}" y="${(ya + yb) / 2 + 4}" font-size="11.5" font-weight="600" fill="${col}">${label}</text>`;
+  };
+  s += dim(0, mh, `${fmt(mh)} mm`, 'var(--accent)');
+  if (S.stacked) s += dim(mh, S.outerH, `${fmt(S.stackLoss)} mm`, 'var(--limit)');
+  s += `<text x="${bx - 8}" y="${y(S.outerH) + 4}" text-anchor="end" font-size="10.5" fill="var(--fg-2)">${S.outerH}</text>`;
+  s += `<text x="${bx - 8}" y="${base + 4}" text-anchor="end" font-size="10.5" fill="var(--fg-2)">0</text>`;
+  s += `<text x="${bx + bw / 2}" y="${base + 15}" text-anchor="middle" font-size="10.5" fill="var(--fg-2)">Seitenansicht, Maße in mm</text>`;
+  return s;
 }
 
 function renderLayers() {
@@ -952,7 +1029,7 @@ function toggle(id, on, label) {
 function renderEditor() {
   const el = $('#editor');
   const bin = binById(S.selected);
-  if (!bin) { el.innerHTML = ''; return; }
+  if (!bin) { el.innerHTML = `<div class="empty-hint"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3v11.5l2.6-2.3 2 4.6 2-.9-2-4.5H17L9 3z" fill="currentColor"/></svg><span>Tippe ein Teil im Plan oder in der 3D-Ansicht an, um Fächer, Griffmulde und Beschriftung einzustellen.</span></div>`; return; }
   const spec = binSpec(bin, S.active);
   const p = partsInfo.byBin.get(bin.id);
   const c = compartment(spec), o = outerSize(spec);
@@ -993,6 +1070,7 @@ function renderBom() {
   const total = S.layers.reduce((a, l) => a + l.layout.bins.length, 0);
   $('#export-sum').textContent = `${total} Teile, ${partsInfo.parts.length} verschiedene`;
   $('#dl-all').disabled = total === 0;
+  $('#dl-sub').textContent = `${partsInfo.parts.length} STL-Dateien für ${total} Teile`;
   $('#dl-one').disabled = !binById(S.selected);
   $('#fit-bed').hidden = partsInfo.parts.every(p => fitsXY(p.spec));
   const L = S.layers[S.active];
