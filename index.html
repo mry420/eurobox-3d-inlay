@@ -204,6 +204,14 @@ details.adv[open] summary::after { transform: rotate(90deg); }
 }
 .switch[aria-checked="true"] { background: var(--ok); }
 .switch[aria-checked="true"] span { transform: translateX(20px); }
+.field-label { font-size: 13px; color: var(--fg-2); }
+#foot-seg button { white-space: nowrap; padding-inline: 4px; }
+.num { display: inline-flex; align-items: center; gap: 6px; color: var(--fg-2); }
+.num input { width: 76px; padding: 6px 10px; border-radius: var(--r-sm); border: 1px solid var(--line); background: var(--surface-2); text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button { border: 0; border-radius: 980px; padding: 5px 11px; font-size: 12.5px; background: var(--fill); font-variant-numeric: tabular-nums; }
+.chips button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
 .btns { display: flex; flex-wrap: wrap; gap: 6px; }
 .btn {
   border: 0;
@@ -309,27 +317,31 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
   <aside class="panel">
     <header class="brand">
       <h1>Eurobox Inlay</h1>
-      <p>Stapelbare Einsätze, die deine Eurobox bündig ausfüllen. Als STL zum Drucken.</p>
+      <p>Stapelbare Einsätze für alle gängigen Euroboxen, bündig in der Box und als STL zum Drucken.</p>
     </header>
 
     <section class="group" aria-labelledby="h-box">
       <h2 id="h-box">Box</h2>
-      <div class="seg" id="box-seg" role="group" aria-label="Boxgröße">
-        <button type="button" data-box="12" id="box-12">40 × 30 × 12 cm</button>
-        <button type="button" data-box="17" id="box-17">40 × 30 × 17 cm</button>
+      <div class="field-label">Grundfläche (Außenmaß in cm)</div>
+      <div class="seg" id="foot-seg" role="group" aria-label="Grundfläche der Box"></div>
+      <div class="row">
+        <label for="in-outerH" class="field-label">Außenhöhe deiner Box</label>
+        <span class="num"><input id="in-outerH" type="number" min="50" max="450" step="1" inputmode="numeric"><span>mm</span></span>
       </div>
+      <input type="range" id="rng-outerH" min="50" max="450" step="5" aria-label="Außenhöhe der Box">
+      <div class="chips" id="h-chips" role="group" aria-label="Übliche Höhen"></div>
+      <div class="row"><span>Box darüber stapeln</span><button type="button" class="switch" role="switch" id="stack-toggle" aria-checked="true" aria-label="Box darüber stapeln"><span></span></button></div>
       <div class="facts">
         <div class="fact"><b id="f-area">355 × 255</b><span>Innenfläche am Boden (mm)</span></div>
-        <div class="fact"><b id="f-height">100 mm</b><span id="f-height-note">Einsatz-Höhe gesamt</span></div>
+        <div class="fact"><b id="f-height">93 mm</b><span id="f-height-note">max. Einsatzhöhe</span></div>
       </div>
       <details class="adv" id="adv">
         <summary>Maße &amp; Druck anpassen</summary>
         <div class="fields">
-          <label for="in-L">Innenlänge Boden (mm)<input id="in-L" data-k="L" type="number" step="0.5" min="100" max="400"></label>
-          <label for="in-W">Innenbreite Boden (mm)<input id="in-W" data-k="W" type="number" step="0.5" min="100" max="300"></label>
-          <label for="in-Ltop">Innenlänge oben (mm)<input id="in-Ltop" data-k="Ltop" type="number" step="0.5" min="100" max="420"></label>
-          <label for="in-H">Innenhöhe dieser Box (mm)<input id="in-H" data-k="H" type="number" step="1" min="30" max="200"></label>
-          <label for="in-clearance">Stapel-Freiraum (mm)<input id="in-clearance" data-k="clearance" type="number" step="1" min="0" max="60"></label>
+          <label for="in-L">Innenlänge Boden (mm)<input id="in-L" data-k="L" type="number" step="0.5" min="80" max="800"></label>
+          <label for="in-W">Innenbreite Boden (mm)<input id="in-W" data-k="W" type="number" step="0.5" min="80" max="600"></label>
+          <label for="in-Ltop">Innenlänge oben (mm)<input id="in-Ltop" data-k="Ltop" type="number" step="0.5" min="80" max="820"></label>
+          <label for="in-stackLoss">Verlust durch Stapeln (mm)<input id="in-stackLoss" data-k="stackLoss" type="number" step="1" min="5" max="60"></label>
           <label for="in-boxRadius">Eckradius Box innen (mm)<input id="in-boxRadius" data-k="boxRadius" type="number" step="0.5" min="0" max="40"></label>
           <label for="in-wall">Wandstärke (mm)<input id="in-wall" data-k="wall" type="number" step="0.1" min="0.8" max="5"></label>
           <label for="in-floor">Bodenstärke (mm)<input id="in-floor" data-k="floor" type="number" step="0.1" min="0.6" max="5"></label>
@@ -338,7 +350,8 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
           <label for="in-radius">Eckradius Teile (mm)<input id="in-radius" data-k="radius" type="number" step="0.5" min="0.5" max="20"></label>
           <label for="in-holeRadius">Fach-Rundung (mm)<input id="in-holeRadius" data-k="holeRadius" type="number" step="0.5" min="0" max="10"></label>
           <label for="in-bed">Druckbett (mm)<input id="in-bed" data-k="bed" type="number" step="1" min="100" max="500"></label>
-          <p class="note">Miss innen am Boden und oben am Rand: Die Wände der Eurobox laufen schräg. Die Außenwände der Randteile folgen dieser Schräge, so sitzt jede Ebene bündig und spielfrei. Der Stapel-Freiraum bleibt oben frei, weil der Fuß der darüber gestapelten Box hineinragt.</p>
+          <p class="note">Miss innen am Boden und oben am Rand: Die Wände der Eurobox laufen schräg. Die Außenwände der Randteile folgen dieser Schräge, so sitzt jede Ebene bündig und spielfrei.</p>
+          <p class="note">„Verlust durch Stapeln“ ist Außenhöhe minus nutzbare Höhe, wenn eine Box darauf steht. Laut Auer-Datenblättern sind das 27 mm bei 30 × 20 und 40 × 30, 17 mm bei 60 × 40 und 80 × 60. Selbst messen: Leere Box draufstellen und vom Boden der unteren Box bis zur tiefsten Stelle der oberen messen.</p>
           <button type="button" class="btn" id="reset-dims">Standardwerte</button>
         </div>
       </details>
@@ -372,6 +385,7 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
       <div class="bom-wrap"><table class="bom" id="bom"></table></div>
       <div class="actions">
         <button type="button" class="btn primary wide" id="dl-all">Alle Teile als ZIP laden</button>
+        <button type="button" class="btn wide" id="fit-bed" hidden>Zu große Teile automatisch teilen</button>
         <button type="button" class="btn wide" id="dl-one" disabled>Ausgewähltes Teil laden</button>
       </div>
       <p class="hint" id="dl-note">Gleiche Teile werden nur einmal exportiert, die Stückzahl steht im Dateinamen. Drucke ohne Stützen, offene Seite nach oben.</p>
@@ -405,15 +419,23 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 /* ---------- Grundwerte ---------- */
 const DEFAULTS = {
-  box: '12',
-  L: 355, W: 255, H12: 115, H17: 165,
+  foot: '43', stacked: true,
+  L: 355, W: 255, outerH: 120, stackLoss: 27,
   slope: 3.5,            // Wandschräge der Box: mm nach außen je 100 mm Höhe und Seite
-  clearance: 15,
   wall: 1.6, floor: 1.2, divider: 1.2, gap: 0.6,
   radius: 4, boxRadius: 12, holeRadius: 2,
   bed: 256,
 };
-const DIM_KEYS = Object.keys(DEFAULTS).filter(k => k !== 'box');
+const DIM_KEYS = Object.keys(DEFAULTS).filter(k => typeof DEFAULTS[k] === 'number');
+// Innenmaße am Boden geschätzt; Stapelverlust nach Auer-Datenblättern ("nutzbare Innenhöhe im Stapel")
+const FOOTPRINTS = [
+  { id: '32', name: '30 × 20', L: 255, W: 155, boxRadius: 10, stackLoss: 27 },
+  { id: '43', name: '40 × 30', L: 355, W: 255, boxRadius: 12, stackLoss: 27 },
+  { id: '64', name: '60 × 40', L: 555, W: 355, boxRadius: 14, stackLoss: 17 },
+  { id: '86', name: '80 × 60', L: 755, W: 555, boxRadius: 16, stackLoss: 17 },
+];
+const HEIGHTS = [75, 120, 170, 220, 270, 320, 420];
+const BOX_FLOOR = 5;
 const MIN_LAYER = 15, MAX_LAYERS = 4, MAX_CELLS = 24, MIN_COMP = 8;
 const LABEL_D = 12, LABEL_T = 1.2;
 
@@ -435,7 +457,7 @@ const TEMPLATES = [
       { f: 0.6, cols: 2, rows: 3, bins: grid(2, 3, (x, y) => b(x, y, 1, 1)) },
       { f: 0.4, cols: 4, rows: 2, bins: grid(4, 2, (x, y) => b(x, y, 1, 1, 1, 2, 100, true, true)) },
     ] },
-  { id: 'drei', name: 'Drei Ebenen', desc: 'Für die hohe Box: Kabel, Lader, Kleinteile', multi: true,
+  { id: 'drei', name: 'Drei Ebenen', desc: 'Für hohe Boxen ab 17 cm: Kabel, Lader, Kleinteile', multi: true,
     layers: [
       { f: 0.45, cols: 2, rows: 3, bins: grid(2, 3, (x, y) => b(x, y, 1, 1)) },
       { f: 0.3, cols: 3, rows: 2, bins: grid(3, 2, (x, y) => b(x, y, 1, 1, 1, 2)) },
@@ -444,7 +466,7 @@ const TEMPLATES = [
   { id: 'raster', name: 'Eigenes Raster', desc: 'Spalten und Reihen frei wählbar', grid: true },
 ];
 
-const STORE_KEY = 'eurobox-inlay-v2';
+const STORE_KEY = 'eurobox-inlay-v3';
 let nextId = 1;
 const nid = () => nextId++;
 const withIds = bins => bins.map(o => ({ ...o, id: nid() }));
@@ -462,7 +484,8 @@ function loadState() {
     const s = JSON.parse(raw);
     if (!s || !Array.isArray(s.layers) || !s.layers.length || !s.layers.every(l => l.layout && Array.isArray(l.layout.bins))) return null;
     for (const k of DIM_KEYS) if (typeof s[k] !== 'number' || !isFinite(s[k])) s[k] = DEFAULTS[k];
-    if (s.box !== '12' && s.box !== '17') s.box = '12';
+    if (typeof s.foot !== 'string') s.foot = '43';
+    s.stacked = s.stacked !== false;
     s.active = Math.min(Math.max(0, s.active | 0), s.layers.length - 1);
     const all = s.layers.flatMap(l => l.layout.bins);
     nextId = Math.max(0, ...all.map(o => o.id || 0)) + 1;
@@ -478,8 +501,9 @@ let S = loadState() || freshState();
 /* ---------- Abgeleitete Maße ---------- */
 const r2 = v => Math.round(v * 100) / 100;
 const fmt = v => (Math.round(v * 10) / 10).toLocaleString('de-DE');
-const innerH = () => (S.box === '12' ? S.H12 : S.H17);
-const maxH = () => Math.max(MIN_LAYER, innerH() - S.clearance);
+const innerH = () => S.outerH - BOX_FLOOR;
+const maxH = () => Math.max(MIN_LAYER, Math.min(innerH(), S.stacked ? S.outerH - S.stackLoss : innerH()));
+const footName = () => (FOOTPRINTS.find(f => f.id === S.foot) || { name: `${Math.round(S.L)} × ${Math.round(S.W)} mm innen` }).name;
 const grow = z => S.slope * z / 100;
 const lay = () => S.layers[S.active].layout;
 const isTop = li => li === S.layers.length - 1;
@@ -523,7 +547,8 @@ const compartment = s => ({
   h: (s.bh - 2 * s.wall - (s.dy - 1) * s.div) / s.dy,
 });
 const outerSize = s => ({ w: s.top[2] - s.top[0], h: s.top[3] - s.top[1] });
-const fitsBed = s => { const o = outerSize(s); return o.w <= S.bed && o.h <= S.bed && s.H <= S.bed; };
+const fitsXY = s => { const o = outerSize(s); return o.w <= S.bed && o.h <= S.bed; };
+const fitsBed = s => fitsXY(s) && s.H <= S.bed;
 const scoopR = (s, c) => Math.min(18, c.h * 0.4, (s.H - s.floor) * 0.6);
 const scoopOk = (s, c) => scoopR(s, c) >= 5;
 const labelOk = (s, c) => c.h >= LABEL_D + 12 && s.H - s.floor >= LABEL_D + LABEL_T + 8;
@@ -759,6 +784,24 @@ function clampDividers() {
     o.dy = Math.min(o.dy, maxDiv(s.bh, S.wall, S.divider));
   }));
 }
+// Teile, die größer als das Druckbett sind, so lange halbieren, bis sie passen
+function autoFit() {
+  const keep = S.active;
+  let n = 0;
+  S.layers.forEach((l, li) => {
+    S.active = li;
+    for (let guard = 0; guard < 60; guard++) {
+      const big = lay().bins.map(o => ({ o, z: outerSize(binSpec(o, li)) })).find(({ z }) => z.w > S.bed || z.h > S.bed);
+      if (!big) break;
+      const ax = big.z.w / S.bed >= big.z.h / S.bed ? 'x' : 'y';
+      const use = canSplit(big.o, ax) ? ax : canSplit(big.o, ax === 'x' ? 'y' : 'x') && (ax === 'x' ? big.z.h : big.z.w) > S.bed ? (ax === 'x' ? 'y' : 'x') : null;
+      if (!use) break;
+      split(big.o, use); n++;
+    }
+  });
+  S.active = keep;
+  return n;
+}
 function markEdited() { S.layers[S.active].edited = true; }
 
 /* ---------- Ebenen ---------- */
@@ -823,13 +866,20 @@ function renderTemplates() {
 }
 
 function renderBox() {
-  document.querySelectorAll('#box-seg button').forEach(btn => btn.setAttribute('aria-pressed', String(btn.dataset.box === S.box)));
+  $('#foot-seg').innerHTML = FOOTPRINTS.map(f => `<button type="button" id="foot-${f.id}" data-foot="${f.id}" aria-pressed="${S.foot === f.id}">${f.name}</button>`).join('')
+    + `<button type="button" id="foot-custom" data-foot="custom" aria-pressed="${S.foot === 'custom'}">Eigene</button>`;
+  $('#h-chips').innerHTML = HEIGHTS.map(h => `<button type="button" id="hc-${h}" data-h="${h}" aria-pressed="${S.outerH === h}">${h}</button>`).join('');
+  if (document.activeElement !== $('#in-outerH')) $('#in-outerH').value = S.outerH;
+  $('#rng-outerH').value = S.outerH;
+  $('#stack-toggle').setAttribute('aria-checked', String(S.stacked));
   $('#f-area').textContent = `${fmt(S.L)} × ${fmt(S.W)}`;
   $('#f-height').textContent = `${fmt(maxH())} mm`;
-  $('#f-height-note').textContent = `Einsätze gesamt (${fmt(innerH())} − ${fmt(S.clearance)} Stapel-Freiraum)`;
+  $('#f-height-note').textContent = S.stacked
+    ? `max. Einsatzhöhe (${fmt(S.outerH)} − ${fmt(S.stackLoss)} für die Box darüber)`
+    : `max. Einsatzhöhe (Innenhöhe, ohne Stapeln)`;
   document.querySelectorAll('.fields input').forEach(inp => {
     const k = inp.dataset.k;
-    const v = k === 'H' ? innerH() : k === 'Ltop' ? r2(S.L + 2 * grow(innerH())) : S[k];
+    const v = k === 'Ltop' ? r2(S.L + 2 * grow(innerH())) : S[k];
     if (document.activeElement !== inp) inp.value = v;
   });
 }
@@ -857,10 +907,11 @@ function renderPlan() {
   const svg = $('#plan');
   const { cols, rows, bins } = lay();
   const cw = S.L / cols, ch = S.W / rows, pad = 6;
-  svg.setAttribute('viewBox', `${-pad} ${-pad} ${S.L + pad * 2} ${S.W + pad * 2}`);
+  const fv = Math.max(9, S.L * 0.026);
+  svg.setAttribute('viewBox', `${-pad} ${-pad} ${S.L + pad * 2} ${S.W + pad * 2 + fv + 4}`);
   const fs = Math.max(11, Math.min(26, Math.min(cw, ch) * 0.3));
   let s = `<rect x="-3" y="-3" width="${S.L + 6}" height="${S.W + 6}" rx="${S.boxRadius + 3}" fill="none" stroke="var(--fg-3)" stroke-width="2"/>`;
-  s += `<text x="${S.L / 2}" y="${S.W + 1}" text-anchor="middle" font-size="9" fill="var(--fg-3)" style="font-family:var(--font)">vorne</text>`;
+  s += `<text x="${S.L / 2}" y="${S.W + 6 + fv}" text-anchor="middle" font-size="${fv}" fill="var(--fg-3)" style="font-family:var(--font)">vorne</text>`;
   const occ = occupancy();
   for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
     if (occ[y * cols + x]) continue;
@@ -909,7 +960,7 @@ function renderEditor() {
   const top = isTop(S.active);
   el.innerHTML = `<div class="editor">
     <div class="ed-head"><strong>Teil ${p ? p.letter : ''}</strong><span>${fmt(o.w)} × ${fmt(o.h)} × ${fmt(spec.H)} mm</span></div>
-    ${fitsBed(spec) ? '' : `<span class="chip warn">Größer als dein Druckbett (${fmt(S.bed)} mm), bitte teilen</span>`}
+    ${!fitsXY(spec) ? `<span class="chip warn">Größer als dein Druckbett (${fmt(S.bed)} mm), bitte teilen</span>` : spec.H > S.bed ? `<span class="chip warn">Höher als ${fmt(S.bed)} mm, eine Ebene mehr anlegen</span>` : ''}
     <div class="row"><span>Fächer nebeneinander</span>${stepper('ed-dx', bin.dx, bin.dx <= 1, bin.dx >= mx, 'Fächer nebeneinander')}</div>
     <div class="row"><span>Fächer hintereinander</span>${stepper('ed-dy', bin.dy, bin.dy <= 1, bin.dy >= my, 'Fächer hintereinander')}</div>
     <p class="hint">Ein Fach misst innen ${fmt(c.w)} × ${fmt(c.h)} mm bei ${fmt(spec.H - S.floor)} mm Tiefe.</p>
@@ -936,13 +987,14 @@ function renderBom() {
     return `<tr class="${sel ? 'sel' : ''}"><td><span class="letter">${p.letter}</span></td><td>${[...p.layers].join(', ')}</td>
       <td>${Math.round(o.w)} × ${Math.round(o.h)} × ${Math.round(s.H)}</td>
       <td>${s.dx * s.dy}</td><td>${p.count}×</td>
-      <td>${fitsBed(s) ? '<span class="chip ok">passt</span>' : '<span class="chip warn">zu groß</span>'}</td></tr>`;
+      <td>${!fitsXY(s) ? '<span class="chip warn">zu groß</span>' : s.H > S.bed ? '<span class="chip warn">zu hoch</span>' : '<span class="chip ok">passt</span>'}</td></tr>`;
   }).join('');
   $('#bom').innerHTML = `<thead><tr><th>Teil</th><th>Ebene</th><th>Maß in mm</th><th>Fächer</th><th>Stück</th><th>Druckbett</th></tr></thead><tbody>${rows}</tbody>`;
   const total = S.layers.reduce((a, l) => a + l.layout.bins.length, 0);
   $('#export-sum').textContent = `${total} Teile, ${partsInfo.parts.length} verschiedene`;
   $('#dl-all').disabled = total === 0;
   $('#dl-one').disabled = !binById(S.selected);
+  $('#fit-bed').hidden = partsInfo.parts.every(p => fitsXY(p.spec));
   const L = S.layers[S.active];
   const t = TEMPLATES.find(x => x.id === L.tpl);
   $('#tpl-state').textContent = `Ebene ${S.active + 1}: ` + (t ? (L.edited ? `${t.name}, angepasst` : t.name) : 'eigenes Layout');
@@ -959,23 +1011,48 @@ function update({ rebuild = true } = {}) {
 }
 
 /* ---------- Events ---------- */
-$('#box-seg').addEventListener('click', e => {
-  const btn = e.target.closest('button[data-box]'); if (!btn) return;
-  S.box = btn.dataset.box; clampDividers(); update(); fitView();
+function afterDims({ view = true } = {}) {
+  clampDividers();
+  const n = autoFit();
+  update();
+  if (view) fitView();
+  if (n) toast(`${n} ${n === 1 ? 'Teil' : 'Teile'} für dein Druckbett geteilt`);
+}
+$('#foot-seg').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-foot]'); if (!btn) return;
+  const f = FOOTPRINTS.find(x => x.id === btn.dataset.foot);
+  if (!f) { S.foot = 'custom'; $('#adv').open = true; update({ rebuild: false }); $('#in-L').focus(); return; }
+  Object.assign(S, { foot: f.id, L: f.L, W: f.W, boxRadius: f.boxRadius, stackLoss: f.stackLoss });
+  afterDims();
 });
+function setOuterH(v, { view = false } = {}) {
+  if (!isFinite(v)) { renderBox(); return; }
+  S.outerH = Math.round(Math.min(450, Math.max(50, v)));
+  afterDims({ view });
+}
+$('#rng-outerH').addEventListener('input', e => setOuterH(Number(e.target.value)));
+$('#rng-outerH').addEventListener('change', () => fitView());
+$('#in-outerH').addEventListener('change', e => setOuterH(parseFloat(String(e.target.value).replace(',', '.')), { view: true }));
+$('#h-chips').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-h]'); if (!btn) return;
+  setOuterH(Number(btn.dataset.h), { view: true });
+});
+$('#stack-toggle').addEventListener('click', () => { S.stacked = !S.stacked; afterDims(); });
 document.querySelectorAll('.fields input').forEach(inp => inp.addEventListener('change', () => {
   const k = inp.dataset.k;
   let v = parseFloat(String(inp.value).replace(',', '.'));
   if (!isFinite(v)) { renderBox(); return; }
   v = Math.min(parseFloat(inp.max), Math.max(parseFloat(inp.min), v));
-  if (k === 'H') { if (S.box === '12') S.H12 = v; else S.H17 = v; }
+  if (k === 'L' || k === 'W') { S[k] = v; S.foot = 'custom'; }
   else if (k === 'Ltop') S.slope = r2(Math.max(0, Math.min(15, (v - S.L) / 2 / innerH() * 100)));
   else S[k] = v;
-  clampDividers(); update(); fitView();
+  afterDims();
 }));
 $('#reset-dims').addEventListener('click', () => {
+  const keepH = S.outerH, f = FOOTPRINTS.find(x => x.id === S.foot) || FOOTPRINTS[1];
   for (const k of DIM_KEYS) S[k] = DEFAULTS[k];
-  clampDividers(); update(); fitView(); toast('Standardmaße wiederhergestellt');
+  Object.assign(S, { foot: f.id, L: f.L, W: f.W, boxRadius: f.boxRadius, stackLoss: f.stackLoss, outerH: keepH });
+  afterDims(); toast('Standardmaße wiederhergestellt');
 });
 $('#templates').addEventListener('click', e => {
   const btn = e.target.closest('button[data-tpl]'); if (!btn) return;
@@ -984,18 +1061,18 @@ $('#templates').addEventListener('click', e => {
   if (t.multi) {
     S.layers = t.layers.map(l => ({ f: l.f, tpl: t.id, edited: false, layout: { cols: l.cols, rows: l.rows, bins: withIds(l.bins) } }));
     S.active = S.layers.length - 1;
-    if (S.box === '12' && t.layers.length > 2) toast('Tipp: Drei Ebenen passen besser in die 17er-Box');
+    if (maxH() < 120 && t.layers.length > 2) toast('Tipp: Drei Ebenen lohnen sich erst bei hohen Boxen');
   } else {
     const src = t.grid ? gridLayout(S.gridCols, S.gridRows) : { cols: t.layers[0].cols, rows: t.layers[0].rows, bins: withIds(t.layers[0].bins) };
     Object.assign(S.layers[S.active], { tpl: t.id, edited: false, layout: src });
   }
-  clampDividers(); update();
+  afterDims({ view: false });
 });
 function setGrid(dc, dr) {
   S.gridCols = Math.min(8, Math.max(1, S.gridCols + dc));
   S.gridRows = Math.min(8, Math.max(1, S.gridRows + dr));
   Object.assign(S.layers[S.active], { tpl: 'raster', edited: false, layout: gridLayout(S.gridCols, S.gridRows) });
-  S.selected = null; clampDividers(); update();
+  S.selected = null; afterDims({ view: false });
 }
 $('#gc-dec').addEventListener('click', () => setGrid(-1, 0));
 $('#gc-inc').addEventListener('click', () => setGrid(1, 0));
@@ -1013,6 +1090,7 @@ $('#layer-height-row').addEventListener('click', e => {
 });
 $('#layer-add').addEventListener('click', () => { addLayer(); update(); });
 $('#layer-del').addEventListener('click', () => { removeLayer(); update(); });
+$('#fit-bed').addEventListener('click', () => { S.selected = null; afterDims({ view: false }); });
 $('#explode').addEventListener('click', () => { S.explode = !S.explode; update(); fitView(); });
 
 function select(id) { S.selected = id; update({ rebuild: false }); }
@@ -1058,10 +1136,10 @@ $('#editor').addEventListener('click', e => {
 $('#dl-all').addEventListener('click', async () => {
   await downloadsReady;
   const files = partsInfo.parts.map(p => ({ name: partFileName(p), data: toSTL(buildBin(p.spec), p.letter) }));
-  const box = S.box === '12' ? '40x30x12' : '40x30x17';
+  const box = (S.foot === 'custom' ? `${Math.round(S.L)}x${Math.round(S.W)}` : footName().replace(/ × /g, 'x')) + `x${S.outerH}mm`;
   const hs = layerHeights();
   const lines = [
-    `Eurobox Inlay für ${box} cm`,
+    `Eurobox Inlay für ${footName()} cm, Außenhöhe ${S.outerH} mm${S.stacked ? ', Box darüber stapelbar' : ''}`,
     `Innenfläche am Boden ${fmt(S.L)} x ${fmt(S.W)} mm, Einsätze gesamt ${fmt(maxH())} mm hoch`,
     `Wandschräge ${fmt(S.slope)} mm je 100 mm, Wand ${S.wall} mm, Boden ${S.floor} mm, Trennwand ${S.divider} mm, Spiel ${S.gap} mm`,
     '',
