@@ -283,7 +283,13 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
 }
 .hud-bottom { top: auto; bottom: 12px; align-items: flex-end; }
 .pill.muted { color: var(--fg-2); font-weight: 400; }
-@media (max-width: 520px) { .pill.muted { display: none; } }
+.hudseg { pointer-events: auto; background: var(--glass); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); box-shadow: 0 1px 4px rgba(0, 0, 0, .08); }
+.hudseg button { padding: 6px 12px; }
+.swatches { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
+.sw { width: 28px; height: 28px; border-radius: 50%; border: 0; padding: 0; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .18); transition: transform .15s; }
+.sw:active { transform: scale(.92); }
+.sw[aria-pressed="true"] { outline: 2.5px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 520px) { .pill.muted, .pill.legend { display: none; } }
 .pill {
   background: var(--glass);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
@@ -396,6 +402,7 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
       <div class="group-head"><h2 id="h-layout"><span class="step">3</span>Anpassen</h2><span class="tag">Draufsicht</span></div>
       <div class="seg" id="layer-seg" role="group" aria-label="Ebene wählen"></div>
       <div class="row" id="layer-height-row"></div>
+      <div class="row" id="layer-lock-row" hidden></div>
       <div class="btns">
         <button type="button" class="btn" id="layer-add">Ebene darüber hinzufügen</button>
         <button type="button" class="btn danger" id="layer-del">Ebene entfernen</button>
@@ -403,6 +410,13 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
       <p class="hint">Tippe auf ein Teil, um Fächer, Extras und Aufteilung zu ändern. Leere Felder füllst du mit +.</p>
       <div class="plan-wrap"><svg id="plan" role="img" aria-label="Draufsicht der gewählten Ebene"></svg></div>
       <div id="editor"></div>
+    </section>
+
+    <section class="group" aria-labelledby="h-look">
+      <div class="group-head"><h2 id="h-look">Vorschau</h2><span class="tag">nur Ansicht</span></div>
+      <div class="row"><span>Filament</span><div class="swatches" id="fil-sw" role="group" aria-label="Filamentfarbe"></div></div>
+      <div class="row"><span>Eurobox</span><div class="swatches" id="box-sw" role="group" aria-label="Farbe der Eurobox"></div></div>
+      <p class="hint">Mit „Schnitt“ unten in der 3D-Ansicht siehst du, wie Stapelfuß und Stapelrand der Ebenen ineinandergreifen.</p>
     </section>
 
     <section class="group" aria-labelledby="h-export">
@@ -437,6 +451,11 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
       </span>
     </div>
     <div class="hud hud-bottom">
+      <div class="seg hudseg" id="view-seg" role="group" aria-label="Box in der Vorschau">
+        <button type="button" id="view-none" data-view="none">Ohne Box</button>
+        <button type="button" id="view-box" data-view="box">In der Box</button>
+        <button type="button" id="view-cut" data-view="cut">Schnitt</button>
+      </div>
       <span class="pill legend"><i></i>Fuß der Box darüber</span>
       <span class="pill muted">Ziehen zum Drehen · Tippen wählt ein Teil</span>
     </div>
@@ -472,9 +491,19 @@ const FOOTPRINTS = [
   { id: '86', name: '80 × 60', L: 755, W: 555, boxRadius: 16, stackLoss: 17 },
 ];
 const HEIGHTS = [75, 120, 170, 220, 270, 320, 420];
+const FILAMENTS = [
+  { id: 'weiss', name: 'Weiß', c: '#f1f1ee' }, { id: 'grau', name: 'Grau', c: '#9a9da2' }, { id: 'schwarz', name: 'Schwarz', c: '#2e2e31' },
+  { id: 'blau', name: 'Blau', c: '#2f7cf6' }, { id: 'orange', name: 'Orange', c: '#f3922b' }, { id: 'gruen', name: 'Grün', c: '#3fb36b' },
+];
+const BOXCOLORS = [
+  { id: 'grau', name: 'Grau', c: '#8b9096' }, { id: 'blau', name: 'Blau', c: '#2b62c4' },
+  { id: 'rot', name: 'Rot', c: '#c63a31' }, { id: 'schwarz', name: 'Schwarz', c: '#2b2c2f' },
+];
 const BOX_FLOOR = 5;
 const MIN_LAYER = 15, MAX_LAYERS = 4, MAX_CELLS = 24, MIN_COMP = 8;
 const LABEL_D = 12, LABEL_T = 1.2;
+// Verzahnung: Stapelrand oben am unteren Teil, passender Fuß unten am oberen Teil
+const LIP_H = 4, LIP_GAP = 0.4, LEDGE = 2, FOOT_H = LIP_H + 0.4;
 
 const b = (x, y, w, h, dx = 1, dy = 1, hp = 100, scoop = false, label = false) => ({ x, y, w, h, dx, dy, hp, scoop, label });
 const grid = (cols, rows, fn) => { const r = []; for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) r.push(fn(x, y)); return r; };
@@ -489,21 +518,21 @@ const TEMPLATES = [
     layers: [{ f: 1, cols: 4, rows: 4, bins: [b(0,0,2,2), b(2,0,2,1,2,1), b(2,1,1,1), b(3,1,1,1), b(0,2,1,2), b(1,2,1,2), b(2,2,2,2,1,2)] }] },
   { id: 'kleinteile', name: 'Kleinteile', desc: '24 Fächer mit Griffmulde und Beschriftung',
     layers: [{ f: 1, cols: 6, rows: 4, bins: grid(6, 4, (x, y) => b(x, y, 1, 1, 1, 1, 100, true, true)) }] },
-  { id: 'zwei', name: 'Zwei Ebenen', desc: 'Unten Kabel, oben herausnehmbare Kleinteile-Schalen', multi: true,
+  { id: 'zwei', name: 'Zwei Ebenen', desc: 'Unten Kabel, oben verzahnte Schalen zum Herausheben', multi: true,
     layers: [
-      { f: 0.6, cols: 2, rows: 3, bins: grid(2, 3, (x, y) => b(x, y, 1, 1)) },
-      { f: 0.4, cols: 4, rows: 2, bins: grid(4, 2, (x, y) => b(x, y, 1, 1, 1, 2, 100, true, true)) },
+      { f: 0.6, cols: 4, rows: 2, bins: grid(4, 2, (x, y) => b(x, y, 1, 1)) },
+      { f: 0.4, lock: true, cols: 4, rows: 2, bins: grid(4, 2, (x, y) => b(x, y, 1, 1, 1, 2, 100, true, true)) },
     ] },
-  { id: 'drei', name: 'Drei Ebenen', desc: 'Für hohe Boxen ab 17 cm: Kabel, Lader, Kleinteile', multi: true,
+  { id: 'drei', name: 'Drei Ebenen', desc: 'Für hohe Boxen: drei verzahnte Etagen übereinander', multi: true,
     layers: [
-      { f: 0.45, cols: 2, rows: 3, bins: grid(2, 3, (x, y) => b(x, y, 1, 1)) },
-      { f: 0.3, cols: 3, rows: 2, bins: grid(3, 2, (x, y) => b(x, y, 1, 1, 1, 2)) },
-      { f: 0.25, cols: 4, rows: 3, bins: grid(4, 3, (x, y) => b(x, y, 1, 1, 1, 1, 100, true, false)) },
+      { f: 0.45, cols: 3, rows: 2, bins: grid(3, 2, (x, y) => b(x, y, 1, 1)) },
+      { f: 0.3, lock: true, cols: 3, rows: 2, bins: grid(3, 2, (x, y) => b(x, y, 1, 1, 1, 2)) },
+      { f: 0.25, lock: true, cols: 3, rows: 2, bins: grid(3, 2, (x, y) => b(x, y, 1, 1, 2, 1, 100, true, false)) },
     ] },
   { id: 'raster', name: 'Eigenes Raster', desc: 'Spalten und Reihen frei wählbar', grid: true },
 ];
 
-const STORE_KEY = 'eurobox-inlay-v3';
+const STORE_KEY = 'eurobox-inlay-v4';
 let nextId = 1;
 const nid = () => nextId++;
 const withIds = bins => bins.map(o => ({ ...o, id: nid() }));
@@ -512,7 +541,8 @@ const gridLayout = (cols, rows) => ({ cols, rows, bins: withIds(grid(cols, rows,
 function freshState() {
   const t = TEMPLATES[0];
   return { ...structuredClone(DEFAULTS), gridCols: 4, gridRows: 3, active: 0, selected: null, explode: false,
-    layers: t.layers.map(l => ({ f: l.f, tpl: t.id, edited: false, layout: { cols: l.cols, rows: l.rows, bins: withIds(l.bins) } })) };
+    view: 'box', fil: 'weiss', boxc: 'grau',
+    layers: t.layers.map(l => ({ f: l.f, tpl: t.id, edited: false, lock: !!l.lock, layout: { cols: l.cols, rows: l.rows, bins: withIds(l.bins) } })) };
 }
 function loadState() {
   try {
@@ -523,6 +553,9 @@ function loadState() {
     for (const k of DIM_KEYS) if (typeof s[k] !== 'number' || !isFinite(s[k])) s[k] = DEFAULTS[k];
     if (typeof s.foot !== 'string') s.foot = '43';
     s.stacked = s.stacked !== false;
+    if (!['box', 'none', 'cut'].includes(s.view)) s.view = 'box';
+    if (typeof s.fil !== 'string') s.fil = 'weiss';
+    if (typeof s.boxc !== 'string') s.boxc = 'grau';
     s.active = Math.min(Math.max(0, s.active | 0), s.layers.length - 1);
     const all = s.layers.flatMap(l => l.layout.bins);
     nextId = Math.max(0, ...all.map(o => o.id || 0)) + 1;
@@ -564,7 +597,9 @@ function binSpec(bin, li) {
   const hs = layerHeights();
   const zb = hs.slice(0, li).reduce((a, v) => a + v, 0);
   const hp = isTop(li) ? bin.hp : 100;
-  const H = r2(hs[li] * hp / 100);
+  const foot = li > 0 && !!S.layers[li].lock;
+  const lip = li < S.layers.length - 1 && !!S.layers[li + 1].lock;
+  const H = r2(hs[li] * hp / 100 + (foot ? LIP_H : 0));
   const bw = r2(bin.w * cw - S.gap), bh = r2(bin.h * ch - S.gap);
   const R = Math.max(0.5, S.radius), BR = Math.max(R, S.boxRadius);
   const left = bin.x === 0, right = bin.x + bin.w === cols, back = bin.y === 0, front = bin.y + bin.h === rows;
@@ -573,22 +608,24 @@ function binSpec(bin, li) {
   // Randteile wachsen mit der Wandschräge der Box nach außen
   const ext = z => [left ? -grow(z) : 0, front ? -grow(z) : 0, bw + (right ? grow(z) : 0), bh + (back ? grow(z) : 0)].map(r2);
   return {
-    bw, bh, H, dx: bin.dx, dy: bin.dy, radii, base: ext(zb), top: ext(zb + H),
-    wall: S.wall, floor: S.floor, div: S.divider, hr: S.holeRadius, scoop: !!bin.scoop, label: !!bin.label,
+    bw, bh, H, dx: bin.dx, dy: bin.dy, radii, base: ext(foot ? zb - LIP_H + FOOT_H : zb), top: ext(zb + hs[li] * hp / 100),
+    wall: S.wall, wi: S.wall + (foot || lip ? LEDGE : 0), foot, lip,
+    floor: S.floor, div: S.divider, hr: S.holeRadius, scoop: !!bin.scoop, label: !!bin.label,
   };
 }
 const specKey = s => [s.bw, s.bh, s.H, s.dx, s.dy, s.radii.join('/'), s.base.join('/'), s.top.join('/'),
-  s.wall, s.floor, s.div, s.hr, s.scoop ? 'S' : '', s.label ? 'L' : ''].join('|');
+  s.wall, s.wi, s.floor, s.div, s.hr, s.scoop ? 'S' : '', s.label ? 'L' : '', s.foot ? 'F' : '', s.lip ? 'R' : ''].join('|');
 const compartment = s => ({
-  w: (s.bw - 2 * s.wall - (s.dx - 1) * s.div) / s.dx,
-  h: (s.bh - 2 * s.wall - (s.dy - 1) * s.div) / s.dy,
+  w: (s.bw - 2 * s.wi - (s.dx - 1) * s.div) / s.dx,
+  h: (s.bh - 2 * s.wi - (s.dy - 1) * s.div) / s.dy,
 });
 const outerSize = s => ({ w: s.top[2] - s.top[0], h: s.top[3] - s.top[1] });
 const fitsXY = s => { const o = outerSize(s); return o.w <= S.bed && o.h <= S.bed; };
 const fitsBed = s => fitsXY(s) && s.H <= S.bed;
-const scoopR = (s, c) => Math.min(18, c.h * 0.4, (s.H - s.floor) * 0.6);
+const depth = s => s.H - (s.lip ? LIP_H : 0) - s.floor;
+const scoopR = (s, c) => Math.min(18, c.h * 0.4, depth(s) * 0.6);
 const scoopOk = (s, c) => scoopR(s, c) >= 5;
-const labelOk = (s, c) => c.h >= LABEL_D + 12 && s.H - s.floor >= LABEL_D + LABEL_T + 8;
+const labelOk = (s, c) => c.h >= LABEL_D + 12 && depth(s) >= LABEL_D + LABEL_T + 8;
 const maxDiv = (len, wall, div) => Math.max(1, Math.min(12, Math.floor((len - 2 * wall + div) / (MIN_COMP + div))));
 
 /* ---------- Geometrie ---------- */
@@ -621,16 +658,16 @@ function buildBin(s) {
   const T = [];
   const tri = (a, b, c) => T.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]);
   const P = (p, z) => [p[0], p[1], z];
-  const H = s.H, F = s.floor;
+  const H = s.H, F = s.floor, Hs = s.lip ? H - LIP_H : H, zo = s.foot ? FOOT_H : 0;
   const ob = rrect(...s.base, s.radii), ot = rrect(...s.top, s.radii);
   const c = compartment(s);
   const hr = Math.max(0, Math.min(s.hr, c.w / 2 - 0.1, c.h / 2 - 0.1));
   const holes = [];
   for (let j = 0; j < s.dy; j++) for (let i = 0; i < s.dx; i++) {
-    const x0 = s.wall + i * (c.w + s.div), y0 = s.wall + j * (c.h + s.div);
+    const x0 = s.wi + i * (c.w + s.div), y0 = s.wi + j * (c.h + s.div);
     // Fächer in den Außenecken folgen dem Eckradius, damit die Wand überall trägt
     const isCorner = [i === 0 && j === 0, i === s.dx - 1 && j === 0, i === s.dx - 1 && j === s.dy - 1, i === 0 && j === s.dy - 1];
-    const rad = isCorner.map((on, k) => on ? Math.max(hr, s.radii[k] - s.wall) : hr);
+    const rad = isCorner.map((on, k) => on ? Math.max(hr, s.radii[k] - s.wi) : hr);
     holes.push(rrect(x0, y0, x0 + c.w, y0 + c.h, rad));
     // Extras als eigene Körper, die mit Wand und Boden überlappen (Slicer vereinen sie)
     const xa = x0 + Math.max(rad[0], rad[3]), xb = x0 + c.w - Math.max(rad[1], rad[2]);
@@ -642,31 +679,47 @@ function buildBin(s) {
     }
     if (s.label && labelOk(s, c) && xb - xa > 2) {
       const y1 = y0 + c.h, e = 0.3;
-      extrudeX(tri, [[y1 + e, H], [y1 - LABEL_D, H], [y1 - LABEL_D, H - LABEL_T], [y1 + e, H - LABEL_T - LABEL_D - e]], xa, xb);
-    }
-  }
-  const n = ob.length;
-  for (let k = 1; k < n - 1; k++) tri(P(ob[0], 0), P(ob[k + 1], 0), P(ob[k], 0));
-  for (let k = 0; k < n; k++) {
-    const q = (k + 1) % n;
-    tri(P(ob[k], 0), P(ob[q], 0), P(ot[q], H)); tri(P(ob[k], 0), P(ot[q], H), P(ot[k], H));
-  }
-  for (const h of holes) {
-    const m = h.length;
-    for (let k = 1; k < m - 1; k++) tri(P(h[0], F), P(h[k], F), P(h[k + 1], F));
-    for (let k = 0; k < m; k++) {
-      const a = h[k], q = h[(k + 1) % m];
-      tri(P(a, F), P(q, H), P(q, F)); tri(P(a, F), P(a, H), P(q, H));
+      extrudeX(tri, [[y1 + e, Hs], [y1 - LABEL_D, Hs], [y1 - LABEL_D, Hs - LABEL_T], [y1 + e, Hs - LABEL_T - LABEL_D - e]], xa, xb);
     }
   }
   const v2 = p => new THREE.Vector2(p[0], p[1]);
-  const all = ot.concat(...holes);
-  const faces = THREE.ShapeUtils.triangulateShape(ot.map(v2), holes.map(h => h.map(v2)));
-  for (const [ia, ib, ic] of faces) {
-    const A = all[ia], B = all[ib], C = all[ic];
-    const cz = (B[0] - A[0]) * (C[1] - A[1]) - (B[1] - A[1]) * (C[0] - A[0]);
-    if (cz >= 0) tri(P(A, H), P(B, H), P(C, H)); else tri(P(A, H), P(C, H), P(B, H));
-  }
+  const face = (outer, inner, z, up) => {
+    const all = outer.concat(...inner);
+    for (const [ia, ib, ic] of THREE.ShapeUtils.triangulateShape(outer.map(v2), inner.map(h => h.map(v2)))) {
+      const A = all[ia], B = all[ib], C = all[ic];
+      const cz = (B[0] - A[0]) * (C[1] - A[1]) - (B[1] - A[1]) * (C[0] - A[0]);
+      if ((cz >= 0) === up) tri(P(A, z), P(B, z), P(C, z)); else tri(P(A, z), P(C, z), P(B, z));
+    }
+  };
+  const fan = (poly, z, up) => {
+    for (let k = 1; k < poly.length - 1; k++) up ? tri(P(poly[0], z), P(poly[k], z), P(poly[k + 1], z)) : tri(P(poly[0], z), P(poly[k + 1], z), P(poly[k], z));
+  };
+  const loft = (lo, hi, z0, z1, outward) => {
+    const n = lo.length;
+    for (let k = 0; k < n; k++) {
+      const q = (k + 1) % n;
+      if (outward) { tri(P(lo[k], z0), P(lo[q], z0), P(hi[q], z1)); tri(P(lo[k], z0), P(hi[q], z1), P(hi[k], z1)); }
+      else { tri(P(lo[k], z0), P(hi[q], z1), P(lo[q], z0)); tri(P(lo[k], z0), P(hi[k], z1), P(hi[q], z1)); }
+    }
+  };
+  // Außen: optional Stapelfuß, dann schräge Außenwand
+  if (s.foot) {
+    const g = s.wall + LIP_GAP;
+    const ft = rrect(g, g, s.bw - g, s.bh - g, s.radii.map(r => r - g));
+    fan(ft, 0, false);
+    loft(ft, ft, 0, zo, true);
+    face(ob, [ft], zo, false);
+  } else fan(ob, 0, false);
+  loft(ob, ot, zo, H, true);
+  // Fächer
+  for (const h of holes) { fan(h, F, true); loft(h, h, F, Hs, false); }
+  // Oben: optional Stapelrand mit Auflagekante
+  if (s.lip) {
+    const I = rrect(s.wall, s.wall, s.bw - s.wall, s.bh - s.wall, s.radii.map(r => r - s.wall));
+    face(ot, [I], H, true);
+    loft(I, I, Hs, H, false);
+    face(I, holes, Hs, true);
+  } else face(ot, holes, H, true);
   return new Float32Array(T);
 }
 
@@ -766,7 +819,7 @@ function computeParts() {
 function partFileName(p) {
   const s = p.spec, o = outerSize(s);
   const div = s.dx * s.dy > 1 ? `_${s.dx}x${s.dy}-faecher` : '';
-  const ext = (s.scoop ? '_mulde' : '') + (s.label ? '_label' : '');
+  const ext = (s.scoop ? '_mulde' : '') + (s.label ? '_label' : '') + (s.foot ? '_fuss' : '') + (s.lip ? '_rand' : '');
   return `${p.letter}_ebene${[...p.layers].join('-')}_${Math.round(o.w)}x${Math.round(o.h)}x${Math.round(s.H)}mm${div}${ext}_${p.count}stk.stl`;
 }
 
@@ -817,8 +870,8 @@ function merge(bin, dir) {
 function clampDividers() {
   S.layers.forEach((l, li) => l.layout.bins.forEach(o => {
     const s = binSpec(o, li);
-    o.dx = Math.min(o.dx, maxDiv(s.bw, S.wall, S.divider));
-    o.dy = Math.min(o.dy, maxDiv(s.bh, S.wall, S.divider));
+    o.dx = Math.min(o.dx, maxDiv(s.bw, s.wi, S.divider));
+    o.dy = Math.min(o.dy, maxDiv(s.bh, s.wi, S.divider));
   }));
 }
 // Teile, die größer als das Druckbett sind, so lange halbieren, bis sie passen
@@ -826,7 +879,9 @@ function autoFit() {
   const keep = S.active;
   let n = 0;
   S.layers.forEach((l, li) => {
+    if (isLocked(li)) return;
     S.active = li;
+    syncLocks();
     for (let guard = 0; guard < 60; guard++) {
       const big = lay().bins.map(o => ({ o, z: outerSize(binSpec(o, li)) })).find(({ z }) => z.w > S.bed || z.h > S.bed);
       if (!big) break;
@@ -837,7 +892,24 @@ function autoFit() {
     }
   });
   S.active = keep;
+  syncLocks();
   return n;
+}
+// Verzahnte Ebenen übernehmen den Grundriss der Ebene darunter; Fächer und Extras bleiben pro Teil erhalten
+const isLocked = li => li > 0 && !!S.layers[li].lock;
+function syncLocks() {
+  for (let li = 1; li < S.layers.length; li++) {
+    const L = S.layers[li];
+    if (!L.lock) continue;
+    const below = S.layers[li - 1].layout, old = L.layout;
+    const same = (q, o) => q.x / old.cols === o.x / below.cols && q.y / old.rows === o.y / below.rows
+      && q.w / old.cols === o.w / below.cols && q.h / old.rows === o.h / below.rows;
+    L.layout = { cols: below.cols, rows: below.rows, bins: below.bins.map(o => {
+      const m = old.bins.find(q => same(q, o));
+      return m ? { ...m, x: o.x, y: o.y, w: o.w, h: o.h } : { ...b(o.x, o.y, o.w, o.h, 1, 1, 100, true, false), id: nid() };
+    }) };
+  }
+  if (S.selected && !lay().bins.some(o => o.id === S.selected)) S.selected = null;
 }
 function markEdited() { S.layers[S.active].edited = true; }
 
@@ -848,7 +920,7 @@ function addLayer() {
   if (hs[last] < MIN_LAYER * 2) { toast(`Die oberste Ebene ist zu flach zum Teilen (min. ${MIN_LAYER * 2} mm)`); return; }
   const half = r2(hs[last] / 2);
   hs[last] = r2(hs[last] - half); hs.push(half);
-  S.layers.push({ f: 0, tpl: null, edited: true, layout: { cols: 4, rows: 3, bins: withIds(grid(4, 3, (x, y) => b(x, y, 1, 1, 1, 1, 100, true, true))) } });
+  S.layers.push({ f: 0, tpl: null, edited: true, lock: true, layout: { cols: 1, rows: 1, bins: [] } });
   setHeights(hs);
   S.active = S.layers.length - 1; S.selected = null;
   clampDividers();
@@ -971,6 +1043,9 @@ function renderLayers() {
   if (n === 1) row.innerHTML = `<span>Höhe</span><span class="tag">${fmt(hs[0])} mm, volle Höhe</span>`;
   else if (i === n - 1) row.innerHTML = `<span>Höhe <small class="tag">ab ${fmt(z0)} mm</small></span><span class="tag">${fmt(hs[i])} mm, Rest bis zur Stapelgrenze</span>`;
   else row.innerHTML = `<span>Höhe <small class="tag">ab ${fmt(z0)} mm</small></span>${stepper('lh', fmt(hs[i]) + ' mm', hs[i] <= MIN_LAYER, hs[n - 1] <= MIN_LAYER, 'Höhe der Ebene')}`;
+  const lr = $('#layer-lock-row');
+  lr.hidden = i === 0;
+  if (i > 0) lr.innerHTML = `<span>Mit Ebene ${i} verzahnen<br><small class="tag">${S.layers[i].lock ? 'Gleicher Grundriss, Fuß greift in den Stapelrand darunter' : 'Liegt nur flach auf, eigener Grundriss'}</small></span>${toggle('lock-toggle', S.layers[i].lock, 'Mit Ebene darunter verzahnen')}`;
   $('#layer-add').disabled = n >= MAX_LAYERS;
   $('#layer-del').disabled = n < 2;
   $('#explode').hidden = n < 2;
@@ -991,7 +1066,7 @@ function renderPlan() {
   s += `<text x="${S.L / 2}" y="${S.W + 6 + fv}" text-anchor="middle" font-size="${fv}" fill="var(--fg-3)" style="font-family:var(--font)">vorne</text>`;
   const occ = occupancy();
   for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
-    if (occ[y * cols + x]) continue;
+    if (occ[y * cols + x] || isLocked(S.active)) continue;
     const X = x * cw + S.gap / 2 + 2, Y = y * ch + S.gap / 2 + 2, w = cw - S.gap - 4, h = ch - S.gap - 4;
     s += `<g class="empty" data-cell="${x},${y}" role="button" aria-label="Teil hinzufügen"><rect x="${X}" y="${Y}" width="${w}" height="${h}" rx="6" fill="transparent" stroke="var(--fg-3)" stroke-width="1.5" stroke-dasharray="5 5"/>` +
       `<text x="${X + w / 2}" y="${Y + h / 2}" text-anchor="middle" dominant-baseline="central" font-size="${fs}" fill="var(--fg-3)">+</text></g>`;
@@ -1033,7 +1108,7 @@ function renderEditor() {
   const spec = binSpec(bin, S.active);
   const p = partsInfo.byBin.get(bin.id);
   const c = compartment(spec), o = outerSize(spec);
-  const mx = maxDiv(spec.bw, S.wall, S.divider), my = maxDiv(spec.bh, S.wall, S.divider);
+  const mx = maxDiv(spec.bw, spec.wi, S.divider), my = maxDiv(spec.bh, spec.wi, S.divider);
   const top = isTop(S.active);
   el.innerHTML = `<div class="editor">
     <div class="ed-head"><strong>Teil ${p ? p.letter : ''}</strong><span>${fmt(o.w)} × ${fmt(o.h)} × ${fmt(spec.H)} mm</span></div>
@@ -1046,13 +1121,14 @@ function renderEditor() {
     </div></div>` : '<p class="hint">Teile unter einer anderen Ebene haben immer volle Ebenen-Höhe, damit die Ebene darüber eben aufliegt.</p>'}
     <div class="row"><span>Griffmulde vorne${scoopOk(spec, c) ? '' : ' <small class="tag">(Fach zu klein)</small>'}</span>${toggle('ed-scoop', bin.scoop, 'Griffmulde')}</div>
     <div class="row"><span>Beschriftungsfeld hinten${labelOk(spec, c) ? '' : ' <small class="tag">(Fach zu klein)</small>'}</span>${toggle('ed-label', bin.label, 'Beschriftungsfeld')}</div>
-    <div class="btns">
+    ${spec.lip || spec.foot ? `<p class="hint">${[spec.foot ? 'Stapelfuß unten' : '', spec.lip ? 'Stapelrand oben' : ''].filter(Boolean).join(' und ')}: Die Teile greifen formschlüssig ineinander.</p>` : ''}
+    ${isLocked(S.active) ? `<p class="hint">Grundriss folgt Ebene ${S.active} darunter. Teilen und Verbinden geht dort.</p>` : `<div class="btns">
       <button type="button" class="btn" id="ed-split-x" ${canSplit(bin, 'x') ? '' : 'disabled'}>Teilen ⟷</button>
       <button type="button" class="btn" id="ed-split-y" ${canSplit(bin, 'y') ? '' : 'disabled'}>Teilen ↕</button>
       <button type="button" class="btn" id="ed-merge-r" ${neighbor(bin, 'right') ? '' : 'disabled'}>Mit rechtem verbinden</button>
       <button type="button" class="btn" id="ed-merge-d" ${neighbor(bin, 'down') ? '' : 'disabled'}>Mit vorderem verbinden</button>
       <button type="button" class="btn danger" id="ed-del">Entfernen</button>
-    </div>
+    </div>`}
     <button type="button" class="btn" id="ed-all">Einstellungen auf alle Teile dieser Ebene übertragen</button>
   </div>`;
 }
@@ -1081,9 +1157,17 @@ function renderBom() {
   $('#hud-stats').textContent = `${S.layers.length} ${S.layers.length === 1 ? 'Ebene' : 'Ebenen'} · ${total} Teile · ${fmt(maxH())} mm hoch`;
 }
 
+function renderLook() {
+  const sw = (list, cur, kind) => list.map(o => `<button type="button" class="sw" id="${kind}-${o.id}" data-${kind}="${o.id}" style="background:${o.c}" aria-pressed="${cur === o.id}" aria-label="${o.name}" title="${o.name}"></button>`).join('');
+  $('#fil-sw').innerHTML = sw(FILAMENTS, S.fil, 'fil');
+  $('#box-sw').innerHTML = sw(BOXCOLORS, S.boxc, 'boxc');
+  document.querySelectorAll('#view-seg button').forEach(btn => btn.setAttribute('aria-pressed', String(btn.dataset.view === S.view)));
+}
 function update({ rebuild = true } = {}) {
+  syncLocks();
+  clampDividers();
   partsInfo = computeParts();
-  renderBox(); renderLayers(); renderTemplates(); renderPlan(); renderEditor(); renderBom();
+  renderBox(); renderLayers(); renderTemplates(); renderPlan(); renderEditor(); renderBom(); renderLook();
   if (scene) { if (rebuild) rebuildScene(); else recolor(); }
   saveState();
 }
@@ -1137,19 +1221,20 @@ $('#templates').addEventListener('click', e => {
   const t = TEMPLATES.find(x => x.id === btn.dataset.tpl);
   S.selected = null;
   if (t.multi) {
-    S.layers = t.layers.map(l => ({ f: l.f, tpl: t.id, edited: false, layout: { cols: l.cols, rows: l.rows, bins: withIds(l.bins) } }));
+    S.layers = t.layers.map(l => ({ f: l.f, tpl: t.id, edited: false, lock: !!l.lock, layout: { cols: l.cols, rows: l.rows, bins: withIds(l.bins) } }));
     S.active = S.layers.length - 1;
     if (maxH() < 120 && t.layers.length > 2) toast('Tipp: Drei Ebenen lohnen sich erst bei hohen Boxen');
   } else {
     const src = t.grid ? gridLayout(S.gridCols, S.gridRows) : { cols: t.layers[0].cols, rows: t.layers[0].rows, bins: withIds(t.layers[0].bins) };
-    Object.assign(S.layers[S.active], { tpl: t.id, edited: false, layout: src });
+    if (isLocked(S.active)) toast('Verzahnung gelöst: Diese Ebene hat jetzt ihr eigenes Layout');
+    Object.assign(S.layers[S.active], { tpl: t.id, edited: false, lock: false, layout: src });
   }
   afterDims({ view: false });
 });
 function setGrid(dc, dr) {
   S.gridCols = Math.min(8, Math.max(1, S.gridCols + dc));
   S.gridRows = Math.min(8, Math.max(1, S.gridRows + dr));
-  Object.assign(S.layers[S.active], { tpl: 'raster', edited: false, layout: gridLayout(S.gridCols, S.gridRows) });
+  Object.assign(S.layers[S.active], { tpl: 'raster', edited: false, lock: false, layout: gridLayout(S.gridCols, S.gridRows) });
   S.selected = null; afterDims({ view: false });
 }
 $('#gc-dec').addEventListener('click', () => setGrid(-1, 0));
@@ -1165,6 +1250,14 @@ $('#layer-height-row').addEventListener('click', e => {
   const btn = e.target.closest('button[data-step]'); if (!btn || btn.disabled) return;
   changeLayerHeight(5 * Number(btn.dataset.d)); update();
   document.getElementById(btn.id)?.focus();
+});
+$('#layer-lock-row').addEventListener('click', e => {
+  if (!e.target.closest('#lock-toggle')) return;
+  const L = S.layers[S.active];
+  L.lock = !L.lock; L.edited = true;
+  if (L.lock) toast('Verzahnt: Grundriss folgt der Ebene darunter');
+  S.selected = null; update();
+  document.getElementById('lock-toggle')?.focus();
 });
 $('#layer-add').addEventListener('click', () => { addLayer(); update(); });
 $('#layer-del').addEventListener('click', () => { removeLayer(); update(); });
@@ -1189,8 +1282,8 @@ $('#editor').addEventListener('click', e => {
   const spec = binSpec(bin, S.active);
   if (btn.dataset.step) {
     const d = Number(btn.dataset.d);
-    if (btn.dataset.step === 'ed-dx') bin.dx = Math.min(maxDiv(spec.bw, S.wall, S.divider), Math.max(1, bin.dx + d));
-    else bin.dy = Math.min(maxDiv(spec.bh, S.wall, S.divider), Math.max(1, bin.dy + d));
+    if (btn.dataset.step === 'ed-dx') bin.dx = Math.min(maxDiv(spec.bw, spec.wi, S.divider), Math.max(1, bin.dx + d));
+    else bin.dy = Math.min(maxDiv(spec.bh, spec.wi, S.divider), Math.max(1, bin.dy + d));
   } else if (btn.dataset.hp) bin.hp = Number(btn.dataset.hp);
   else if (btn.id === 'ed-scoop') bin.scoop = !bin.scoop;
   else if (btn.id === 'ed-label') bin.label = !bin.label;
@@ -1225,7 +1318,7 @@ $('#dl-all').addEventListener('click', async () => {
     ...hs.map((h, i) => `Ebene ${i + 1}: ${fmt(h)} mm hoch, ab ${fmt(layerBase(i))} mm`),
     '',
     'Teile:',
-    ...partsInfo.parts.map(p => { const o = outerSize(p.spec); return `${p.letter}: ${p.count}x, Ebene ${[...p.layers].join('/')}, ${fmt(o.w)} x ${fmt(o.h)} x ${fmt(p.spec.H)} mm, ${p.spec.dx * p.spec.dy} Fächer${p.spec.scoop ? ', Griffmulde' : ''}${p.spec.label ? ', Beschriftungsfeld' : ''}${fitsBed(p.spec) ? '' : '  (größer als Druckbett!)'}`; }),
+    ...partsInfo.parts.map(p => { const o = outerSize(p.spec); return `${p.letter}: ${p.count}x, Ebene ${[...p.layers].join('/')}, ${fmt(o.w)} x ${fmt(o.h)} x ${fmt(p.spec.H)} mm, ${p.spec.dx * p.spec.dy} Fächer${p.spec.scoop ? ', Griffmulde' : ''}${p.spec.label ? ', Beschriftungsfeld' : ''}${p.spec.foot ? ', Stapelfuß' : ''}${p.spec.lip ? ', Stapelrand' : ''}${fitsBed(p.spec) ? '' : '  (größer als Druckbett!)'}`; }),
     '',
     'Druck: offene Seite nach oben, ohne Stützen. Erst die untere Ebene einlegen, dann die nächste darauf.',
   ];
@@ -1242,7 +1335,8 @@ $('#dl-one').addEventListener('click', async () => {
 });
 
 /* ---------- 3D ---------- */
-let scene, camera, renderer, controls, world, binsGroup, shellGroup;
+let scene, camera, renderer, controls, world, binsGroup, shellGroup, boxGroup;
+const clipPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
 const mats = {};
 const stage = $('#stage');
 const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -1256,6 +1350,7 @@ function initThree() {
     return;
   }
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.localClippingEnabled = true;
   stage.prepend(renderer.domElement);
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(35, 1, 1, 5000);
@@ -1276,13 +1371,15 @@ function initThree() {
   world = new THREE.Group();
   world.rotation.x = -Math.PI / 2; // Modell ist Z-oben, Three.js ist Y-oben
   scene.add(world);
-  binsGroup = new THREE.Group(); shellGroup = new THREE.Group();
-  world.add(binsGroup, shellGroup);
+  binsGroup = new THREE.Group(); shellGroup = new THREE.Group(); boxGroup = new THREE.Group();
+  world.add(binsGroup, shellGroup, boxGroup);
 
-  mats.bin = new THREE.MeshStandardMaterial({ roughness: 0.55 });
-  mats.dim = new THREE.MeshStandardMaterial({ roughness: 0.55, transparent: true, opacity: 0.35, depthWrite: false });
-  mats.sel = new THREE.MeshStandardMaterial({ roughness: 0.45 });
-  mats.warn = new THREE.MeshStandardMaterial({ roughness: 0.55 });
+  mats.bin = new THREE.MeshStandardMaterial({ roughness: 0.6, side: THREE.DoubleSide });
+  mats.dim = new THREE.MeshStandardMaterial({ roughness: 0.6, transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide });
+  mats.sel = new THREE.MeshStandardMaterial({ roughness: 0.45, side: THREE.DoubleSide });
+  mats.warn = new THREE.MeshStandardMaterial({ roughness: 0.6, side: THREE.DoubleSide });
+  mats.box = new THREE.MeshStandardMaterial({ roughness: 0.75, side: THREE.DoubleSide });
+  mats.handle = new THREE.MeshBasicMaterial({ color: 0x111113, side: THREE.DoubleSide });
   mats.edge = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.35 });
   mats.edgeDim = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.12 });
   mats.shell = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.6 });
@@ -1316,12 +1413,16 @@ function initThree() {
 function applyColors() {
   if (!scene) return;
   scene.background = new THREE.Color(css('--scene'));
-  mats.bin.color.set(css('--bin'));
-  mats.dim.color.set(css('--bin'));
+  const fil = FILAMENTS.find(f => f.id === S.fil) || FILAMENTS[0];
+  mats.bin.color.set(fil.c);
+  mats.dim.color.set(fil.c);
+  mats.box.color.set((BOXCOLORS.find(f => f.id === S.boxc) || BOXCOLORS[0]).c);
+  const light = new THREE.Color(fil.c).getHSL({}).l > 0.5;
   mats.sel.color.set(css('--accent'));
   mats.warn.color.set(css('--limit'));
-  mats.edge.color.set(css('--bin-edge'));
-  mats.edgeDim.color.set(css('--bin-edge'));
+  mats.edge.color.set(light ? '#000000' : '#ffffff');
+  mats.edgeDim.color.set(light ? '#000000' : '#ffffff');
+  mats.edge.opacity = light ? 0.22 : 0.3;
   mats.shell.color.set(css('--shell'));
   mats.floor.color.set(css('--shell'));
   mats.limit.color.set(css('--limit'));
@@ -1348,6 +1449,109 @@ function requestRender() {
   });
 }
 
+// Kleine Helfer zum Aufbau geschlossener Körper (für das Box-Modell)
+function mesher() {
+  const T = [];
+  const tri = (a, b, c) => T.push(a[0], a[1], a[2], b[0], b[1], b[2], c[0], c[1], c[2]);
+  const P = (p, z) => [p[0], p[1], z];
+  const v2 = p => new THREE.Vector2(p[0], p[1]);
+  const fan = (poly, z, up) => { for (let k = 1; k < poly.length - 1; k++) up ? tri(P(poly[0], z), P(poly[k], z), P(poly[k + 1], z)) : tri(P(poly[0], z), P(poly[k + 1], z), P(poly[k], z)); };
+  const loft = (lo, hi, z0, z1, out) => {
+    for (let k = 0; k < lo.length; k++) {
+      const q = (k + 1) % lo.length;
+      if (out) { tri(P(lo[k], z0), P(lo[q], z0), P(hi[q], z1)); tri(P(lo[k], z0), P(hi[q], z1), P(hi[k], z1)); }
+      else { tri(P(lo[k], z0), P(hi[q], z1), P(lo[q], z0)); tri(P(lo[k], z0), P(hi[k], z1), P(hi[q], z1)); }
+    }
+  };
+  const face = (outer, inner, z, up) => {
+    const all = outer.concat(...inner);
+    for (const [ia, ib, ic] of THREE.ShapeUtils.triangulateShape(outer.map(v2), inner.map(h => h.map(v2)))) {
+      const A = all[ia], B = all[ib], C = all[ic];
+      const cz = (B[0] - A[0]) * (C[1] - A[1]) - (B[1] - A[1]) * (C[0] - A[0]);
+      if ((cz >= 0) === up) tri(P(A, z), P(B, z), P(C, z)); else tri(P(A, z), P(C, z), P(B, z));
+    }
+  };
+  return { T, tri, fan, loft, face };
+}
+function boxOuter() {
+  const f = FOOTPRINTS.find(x => x.id === S.foot);
+  if (f) { const [a, c] = f.name.split(' × ').map(Number); return { OL: a * 10, OW: c * 10 }; }
+  return { OL: S.L + 45, OW: S.W + 45 };
+}
+// Vereinfachte Eurobox: schräge Wanne, breiter Rand oben, Rippen und Griffe an den Stirnseiten
+function buildBox() {
+  const m = mesher();
+  const H = S.outerH, g = grow(innerH()), t = 2.5, R = Math.max(1, S.boxRadius), RIM = Math.min(16, H * 0.2);
+  const { OL, OW } = boxOuter(), ox = (OL - S.L) / 2, oy = (OW - S.W) / 2;
+  const rr = (x0, y0, x1, y1, r) => rrect(x0, y0, x1, y1, [r, r, r, r]);
+  const inB = rr(0, 0, S.L, S.W, R), inT = rr(-g, -g, S.L + g, S.W + g, R);
+  const outB = rr(-t, -t, S.L + t, S.W + t, R + t), outT = rr(-g - t, -g - t, S.L + g + t, S.W + g + t, R + t);
+  m.fan(outB, 0, false); m.loft(outB, outT, 0, H - 0.2, true); m.face(outT, [inT], H - 0.2, true);
+  m.loft(inB, inT, BOX_FLOOR, H - 0.2, false); m.fan(inB, BOX_FLOOR, true);
+  const rimO = rr(-ox, -oy, S.L + ox, S.W + oy, R + 10), rimI = rr(-g - t / 2, -g - t / 2, S.L + g + t / 2, S.W + g + t / 2, R + t / 2);
+  m.loft(rimO, rimO, H - RIM, H, true); m.loft(rimI, rimI, H - RIM, H, false);
+  m.face(rimO, [rimI], H, true); m.face(rimO, [rimI], H - RIM, false);
+  // Rippen unter dem Rand
+  const zr = H - RIM, z0 = Math.max(BOX_FLOOR, zr - H * 0.55), wR = 2.5;
+  const wallAt = z => t + grow(z) - 0.6;
+  const prism = (prof, a0, a1, axis, mirror) => {
+    const tmp = mesher();
+    let pr = prof;
+    const area = pr.reduce((acc, p, i) => { const q = pr[(i + 1) % pr.length]; return acc + p[0] * q[1] - q[0] * p[1]; }, 0);
+    if (area < 0) pr = [...pr].reverse();
+    extrudeX(tmp.tri, pr, a0, a1);
+    const A = tmp.T;
+    for (let i = 0; i < A.length; i += 9) {
+      const v = [0, 3, 6].map(o => {
+        let [x, y, z] = [A[i + o], A[i + o + 1], A[i + o + 2]];
+        if (mirror) y = (axis === 'x' ? S.W : S.L) - y;
+        return axis === 'x' ? [x, y, z] : [y, x, z];
+      });
+      // Spiegeln oder Achsen tauschen dreht die Orientierung um
+      if (mirror !== (axis === 'y')) m.tri(v[0], v[2], v[1]); else m.tri(v[0], v[1], v[2]);
+    }
+  };
+  const ribs = (len, n) => Array.from({ length: n }, (_, i) => len * (i + 1) / (n + 1));
+  for (const x of ribs(S.L, Math.max(2, Math.round(S.L / 95)))) {
+    const prof = [[-wallAt(z0), z0], [-wallAt(zr), zr], [-oy + 1, zr]];
+    prism(prof, x - wR / 2, x + wR / 2, 'x', false); prism(prof, x - wR / 2, x + wR / 2, 'x', true);
+  }
+  for (const y of ribs(S.W, Math.max(1, Math.round(S.W / 140)))) {
+    const prof = [[-wallAt(z0), z0], [-wallAt(zr), zr], [-ox + 1, zr]];
+    prism(prof, y - wR / 2, y + wR / 2, 'y', false); prism(prof, y - wR / 2, y + wR / 2, 'y', true);
+  }
+  return new Float32Array(m.T);
+}
+function rebuildBox() {
+  boxGroup.children.forEach(o => o.geometry.dispose());
+  boxGroup.clear();
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(buildBox(), 3));
+  g.computeVertexNormals();
+  boxGroup.add(new THREE.Mesh(g, mats.box));
+  // Griffmulden an den Stirnseiten
+  const { OL } = boxOuter(), ox = (OL - S.L) / 2, RIM = Math.min(16, S.outerH * 0.2);
+  const hw = Math.min(110, S.W * 0.45), hh = Math.max(4, RIM * 0.55);
+  for (const side of [-1, 1]) {
+    const pl = new THREE.Mesh(new THREE.PlaneGeometry(hh, hw), mats.handle);
+    pl.rotation.y = side * Math.PI / 2;
+    pl.position.set(side < 0 ? -ox - 0.4 : S.L + ox + 0.4, S.W / 2, S.outerH - RIM / 2);
+    boxGroup.add(pl);
+  }
+}
+function applyView() {
+  if (!scene) return;
+  const show = S.view !== 'none';
+  boxGroup.visible = show;
+  shellGroup.children.forEach(o => { if (!o.userData.limit) o.visible = !show; });
+  // Schnitt mitten durch eine Teile-Reihe, damit Fuß und Rand sichtbar werden
+  const L0 = S.layers[0].layout, ch = S.W / L0.rows;
+  clipPlane.constant = (Math.floor(L0.rows / 2) + 0.5) * ch - S.W / 2;
+  const planes = S.view === 'cut' ? [clipPlane] : [];
+  for (const k of ['bin', 'dim', 'sel', 'warn', 'box', 'handle', 'edge', 'edgeDim', 'limit', 'limitLine']) { mats[k].clippingPlanes = planes; mats[k].needsUpdate = true; }
+  recolor();
+}
+
 const rectLine = (x0, y0, x1, y1, z) => [x0, y0, z, x1, y0, z, x1, y0, z, x1, y1, z, x1, y1, z, x0, y1, z, x0, y1, z, x0, y0, z];
 function rebuildShell() {
   shellGroup.children.forEach(o => o.geometry.dispose());
@@ -1366,10 +1570,13 @@ function rebuildShell() {
   const mh = maxH(), tm = grow(mh);
   const lim = new THREE.Mesh(new THREE.PlaneGeometry(L + 2 * tm, W + 2 * tm), mats.limit);
   lim.position.set(L / 2, W / 2, mh + (S.explode ? EXPLODE * (S.layers.length - 1) : 0));
+  lim.userData.limit = true;
   shellGroup.add(lim);
   const lg = new THREE.BufferGeometry();
   lg.setAttribute('position', new THREE.Float32BufferAttribute(rectLine(-tm, -tm, L + tm, W + tm, lim.position.z), 3));
-  shellGroup.add(new THREE.LineSegments(lg, mats.limitLine));
+  const ll = new THREE.LineSegments(lg, mats.limitLine);
+  ll.userData.limit = true;
+  shellGroup.add(ll);
 }
 
 function rebuildScene() {
@@ -1378,7 +1585,7 @@ function rebuildScene() {
   const cache = new Map();
   S.layers.forEach((l, li) => {
     const cw = S.L / l.layout.cols, ch = S.W / l.layout.rows;
-    const z = layerBase(li) + (S.explode ? EXPLODE * li : 0);
+    const z = layerBase(li) - (isLocked(li) ? LIP_H : 0) + (S.explode ? EXPLODE * li : 0);
     for (const bin of l.layout.bins) {
       const p = partsInfo.byBin.get(bin.id);
       if (!cache.has(p.key)) {
@@ -1399,13 +1606,14 @@ function rebuildScene() {
     }
   });
   rebuildShell();
+  rebuildBox();
   world.position.set(-S.L / 2, 0, S.W / 2);
-  recolor();
+  applyView();
 }
 
 function recolor() {
   for (const o of binsGroup.children) {
-    const dim = S.layers.length > 1 && o.userData.li !== S.active;
+    const dim = S.view === 'none' && S.layers.length > 1 && o.userData.li !== S.active;
     if (!o.isMesh) { o.material = dim ? mats.edgeDim : mats.edge; continue; }
     const p = partsInfo.byBin.get(o.userData.id);
     o.material = o.userData.id === S.selected ? mats.sel : dim ? mats.dim : (p && !fitsBed(p.spec) ? mats.warn : mats.bin);
@@ -1416,10 +1624,11 @@ function recolor() {
 
 function fitView() {
   if (!camera) return;
-  const top = innerH() + (S.explode ? EXPLODE * (S.layers.length - 1) : 0);
-  const size = Math.hypot(S.L, S.W, top * 0.8) * 1.12;
+  const top = S.outerH + (S.explode ? EXPLODE * (S.layers.length - 1) : 0);
+  const { OL, OW } = S.view === 'none' ? { OL: S.L, OW: S.W } : boxOuter();
+  const size = Math.hypot(OL, OW, top * 0.8) * 1.1;
   const fit = size / 2 / Math.tan(camera.fov * Math.PI / 360) / Math.min(1, camera.aspect);
-  const dir = new THREE.Vector3(0.35, 0.75, 0.9).normalize();
+  const dir = (S.view === 'cut' ? new THREE.Vector3(0.3, 0.45, 1) : new THREE.Vector3(0.35, 0.75, 0.9)).normalize();
   controls.target.set(0, top * 0.4, 0);
   camera.position.copy(dir.multiplyScalar(fit * 1.05)).add(controls.target);
   camera.lookAt(controls.target);
@@ -1427,6 +1636,18 @@ function fitView() {
   requestRender();
 }
 $('#view-reset').addEventListener('click', fitView);
+$('#view-seg').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-view]'); if (!btn) return;
+  S.view = btn.dataset.view; renderLook(); applyView(); fitView(); saveState();
+});
+$('#fil-sw').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-fil]'); if (!btn) return;
+  S.fil = btn.dataset.fil; renderLook(); applyColors(); recolor(); saveState();
+});
+$('#box-sw').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-boxc]'); if (!btn) return;
+  S.boxc = btn.dataset.boxc; renderLook(); applyColors(); requestRender(); saveState();
+});
 
 /* ---------- Start ---------- */
 clampDividers();

@@ -7,7 +7,8 @@ Einfach `index.html` im Browser öffnen, ohne Installation und ohne Build. Three
 ## Funktionen
 
 - **Vorlagen**: Kabel-Bahnen, Kabel & Netzteile, Ladegeräte, Gemischt, Kleinteile, Zwei Ebenen, Drei Ebenen, eigenes Raster
-- **Ebenen**: Einsätze in bis zu 4 Lagen übereinander. Jede Ebene hat ihr eigenes Layout und füllt die ganze Bodenfläche, die obere liegt eben auf der unteren auf.
+- **Ebenen, verzahnt stapelbar**: Einsätze in bis zu 4 Lagen übereinander. Verzahnte Ebenen haben denselben Grundriss wie die Ebene darunter: Die unteren Teile bekommen oben einen 4 mm hohen Stapelrand, die oberen Teile unten einen passenden Fuß (0,4 mm Spiel). So sitzen die Behälter formschlüssig aufeinander und lassen sich einzeln herausheben. Nicht verzahnte Ebenen haben ein eigenes Layout und liegen flach auf.
+- **3D-Vorschau in der Box**: Ansicht ohne Box, in einer Eurobox oder im Schnitt, mit wählbarer Filament- und Boxfarbe.
 - **Bündiger Sitz in der Box**: Die Außenwände der Randteile folgen der Wandschräge der Eurobox, die Eckteile dem Eckradius der Box. Dadurch verrutscht nichts.
 - **Stapelbare Boxen**: Die Einsätze enden unter der Stapelgrenze, damit die nächste Eurobox noch draufpasst. Ohne Stapeln (Schalter aus) nutzen sie die volle Innenhöhe.
 - **Automatisch druckbar**: Teile, die größer als das Druckbett sind, werden automatisch geteilt.
