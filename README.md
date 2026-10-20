@@ -14,7 +14,12 @@ Einfach `index.html` im Browser öffnen, ohne Installation und ohne Build. Three
 - **Automatisch druckbar**: Teile, die größer als das Druckbett sind, werden automatisch geteilt.
 - **Layout-Editor**: Teile teilen, verbinden, entfernen, hinzufügen. Fächer pro Teil, Griffmulde vorne, Beschriftungsfeld hinten, Höhe der obersten Ebene (voll, ¾, ½, ⅓).
 - **Druckbett-Prüfung**: Teile, die größer als dein Druckbett sind, werden markiert.
-- **Export**: ZIP mit einer STL pro Teil-Variante (gleiche Teile nur einmal, Stückzahl im Dateinamen) plus Stückliste.
+- **Wand folgt der Box-Schräge**: Auch die Fächer der Randteile laufen schräg mit, die Wand bleibt überall gleich dünn. Das spart rund ein Viertel Filament.
+- **Filamentverbrauch**: Gramm pro Teil und gesamt (PLA, 1,24 g/cm³).
+- **Rückgängig/Wiederholen**: Knöpfe oder ⌘Z / Strg+Z, ⇧⌘Z / Strg+Y.
+- **Design speichern und öffnen** als JSON-Datei, zum Weitergeben an andere.
+- **Nächste Box darüber** als durchsichtige Vorschau, damit man den Stapelplatz sieht.
+- **Export**: ZIP mit einer STL pro Teil-Variante (gleiche Teile nur einmal, Stückzahl im Dateinamen) plus Stückliste mit Gewicht.
 - Hell und dunkel, läuft auch auf dem Handy. Einstellungen bleiben im Browser gespeichert.
 
 ## Maße

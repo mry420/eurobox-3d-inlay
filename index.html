@@ -247,8 +247,13 @@ input[type="range"] { width: 100%; accent-color: var(--accent); margin: 0; }
 .btn:active { transform: scale(.97); }
 .btn:disabled { opacity: .4; cursor: default; transform: none; }
 .btn.danger { color: #ff3b30; }
+.btn.icon { width: 34px; height: 30px; padding: 0; display: inline-grid; place-items: center; }
+.btn.icon svg { width: 18px; height: 18px; }
+#plan g:focus { outline: none; }
+#plan g:focus-visible > rect { stroke: var(--accent); stroke-width: 3; }
 .btn.primary { background: var(--accent); color: var(--on-accent); padding: 11px 18px; font-size: 15px; }
 .btn.wide { width: 100%; }
+.btns.two { display: grid; grid-template-columns: 1fr 1fr; }
 
 /* Bill of materials */
 .bom-wrap { overflow-x: auto; }
@@ -312,8 +317,8 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
 .toast {
   position: fixed;
   left: 50%;
-  bottom: calc(20px + env(safe-area-inset-bottom, 0px));
-  transform: translate(-50%, 20px);
+  top: calc(20px + env(safe-area-inset-top, 0px));
+  transform: translate(-50%, -20px);
   opacity: 0;
   background: var(--glass);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
@@ -378,6 +383,7 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
           <label for="in-floor">Bodenstärke (mm)<input id="in-floor" data-k="floor" type="number" step="0.1" min="0.6" max="5"></label>
           <label for="in-divider">Trennwand (mm)<input id="in-divider" data-k="divider" type="number" step="0.1" min="0.8" max="5"></label>
           <label for="in-gap">Spiel zwischen Teilen (mm)<input id="in-gap" data-k="gap" type="number" step="0.1" min="0" max="5"></label>
+          <label for="in-stackGap">Spiel Stapelfuß (mm)<input id="in-stackGap" data-k="stackGap" type="number" step="0.05" min="0.1" max="1.5"></label>
           <label for="in-radius">Eckradius Teile (mm)<input id="in-radius" data-k="radius" type="number" step="0.5" min="0.5" max="20"></label>
           <label for="in-holeRadius">Fach-Rundung (mm)<input id="in-holeRadius" data-k="holeRadius" type="number" step="0.5" min="0" max="10"></label>
           <label for="in-bed">Druckbett (mm)<input id="in-bed" data-k="bed" type="number" step="1" min="100" max="500"></label>
@@ -399,7 +405,8 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
     </section>
 
     <section class="group" aria-labelledby="h-layout">
-      <div class="group-head"><h2 id="h-layout"><span class="step">3</span>Anpassen</h2><span class="tag">Draufsicht</span></div>
+      <div class="group-head"><h2 id="h-layout"><span class="step">3</span>Anpassen</h2>
+        <span class="btns"><button type="button" class="btn icon" id="undo" aria-label="Rückgängig" title="Rückgängig (⌘Z)" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 5 3.5 9l4 4M4 9h7.5a4.5 4.5 0 0 1 0 9H9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button><button type="button" class="btn icon" id="redo" aria-label="Wiederholen" title="Wiederholen (⇧⌘Z)" disabled><svg viewBox="0 0 20 20" aria-hidden="true"><path d="m12.5 5 4 4-4 4M16 9H8.5a4.5 4.5 0 0 0 0 9H11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></span></div>
       <div class="seg" id="layer-seg" role="group" aria-label="Ebene wählen"></div>
       <div class="row" id="layer-height-row"></div>
       <div class="row" id="layer-lock-row" hidden></div>
@@ -416,6 +423,7 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
       <div class="group-head"><h2 id="h-look">Vorschau</h2><span class="tag">nur Ansicht</span></div>
       <div class="row"><span>Filament</span><div class="swatches" id="fil-sw" role="group" aria-label="Filamentfarbe"></div></div>
       <div class="row"><span>Eurobox</span><div class="swatches" id="box-sw" role="group" aria-label="Farbe der Eurobox"></div></div>
+      <div class="row"><span>Nächste Box darüber zeigen</span><button type="button" class="switch" role="switch" id="ghost-toggle" aria-checked="false" aria-label="Nächste Box darüber zeigen"><span></span></button></div>
       <p class="hint">Mit „Schnitt“ unten in der 3D-Ansicht siehst du, wie Stapelfuß und Stapelrand der Ebenen ineinandergreifen.</p>
     </section>
 
@@ -426,6 +434,11 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
         <button type="button" class="btn primary wide" id="dl-all"><span>Alle Teile als ZIP laden</span><small id="dl-sub"></small></button>
         <button type="button" class="btn wide" id="fit-bed" hidden>Zu große Teile automatisch teilen</button>
         <button type="button" class="btn wide" id="dl-one" disabled>Ausgewähltes Teil laden</button>
+        <div class="btns two">
+          <button type="button" class="btn" id="design-save">Design speichern</button>
+          <button type="button" class="btn" id="design-load">Design öffnen</button>
+          <input type="file" id="design-file" accept=".json,application/json" hidden>
+        </div>
       </div>
       <p class="hint" id="dl-note">Gleiche Teile werden nur einmal exportiert, die Stückzahl steht im Dateinamen.</p>
     </section>
@@ -478,7 +491,7 @@ const DEFAULTS = {
   foot: '43', stacked: true,
   L: 355, W: 255, outerH: 120, stackLoss: 27,
   slope: 3.5,            // Wandschräge der Box: mm nach außen je 100 mm Höhe und Seite
-  wall: 1.6, floor: 1.2, divider: 1.2, gap: 0.6,
+  wall: 1.6, floor: 1.2, divider: 1.2, gap: 0.6, stackGap: 0.4,
   radius: 4, boxRadius: 12, holeRadius: 2,
   bed: 256,
 };
@@ -503,7 +516,7 @@ const BOX_FLOOR = 5;
 const MIN_LAYER = 15, MAX_LAYERS = 4, MAX_CELLS = 24, MIN_COMP = 8;
 const LABEL_D = 12, LABEL_T = 1.2;
 // Verzahnung: Stapelrand oben am unteren Teil, passender Fuß unten am oberen Teil
-const LIP_H = 4, LIP_GAP = 0.4, LEDGE = 2, FOOT_H = LIP_H + 0.4;
+const LIP_H = 4, LEDGE = 2, FOOT_H = LIP_H + 0.4;
 
 const b = (x, y, w, h, dx = 1, dy = 1, hp = 100, scoop = false, label = false) => ({ x, y, w, h, dx, dy, hp, scoop, label });
 const grid = (cols, rows, fn) => { const r = []; for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) r.push(fn(x, y)); return r; };
@@ -545,10 +558,10 @@ function freshState() {
     layers: t.layers.map(l => ({ f: l.f, tpl: t.id, edited: false, lock: !!l.lock, layout: { cols: l.cols, rows: l.rows, bins: withIds(l.bins) } })) };
 }
 function loadState() {
+  try { const raw = localStorage.getItem(STORE_KEY); return raw ? normalize(JSON.parse(raw)) : null; } catch { return null; }
+}
+function normalize(s) {
   try {
-    const raw = localStorage.getItem(STORE_KEY);
-    if (!raw) return null;
-    const s = JSON.parse(raw);
     if (!s || !Array.isArray(s.layers) || !s.layers.length || !s.layers.every(l => l.layout && Array.isArray(l.layout.bins))) return null;
     for (const k of DIM_KEYS) if (typeof s[k] !== 'number' || !isFinite(s[k])) s[k] = DEFAULTS[k];
     if (typeof s.foot !== 'string') s.foot = '43';
@@ -560,6 +573,10 @@ function loadState() {
     const all = s.layers.flatMap(l => l.layout.bins);
     nextId = Math.max(0, ...all.map(o => o.id || 0)) + 1;
     all.forEach(o => { if (!o.id) o.id = nid(); });
+    s.layers.forEach(l => { l.lock = !!l.lock; if (typeof l.f !== 'number' || !(l.f > 0)) l.f = 1 / s.layers.length; });
+    if (typeof s.gridCols !== 'number') s.gridCols = 4;
+    if (typeof s.gridRows !== 'number') s.gridRows = 3;
+    s.ghost = !!s.ghost;
     return s;
   } catch { return null; }
 }
@@ -609,12 +626,12 @@ function binSpec(bin, li) {
   const ext = z => [left ? -grow(z) : 0, front ? -grow(z) : 0, bw + (right ? grow(z) : 0), bh + (back ? grow(z) : 0)].map(r2);
   return {
     bw, bh, H, dx: bin.dx, dy: bin.dy, radii, base: ext(foot ? zb - LIP_H + FOOT_H : zb), top: ext(zb + hs[li] * hp / 100),
-    wall: S.wall, wi: S.wall + (foot || lip ? LEDGE : 0), foot, lip,
+    wall: S.wall, wi: S.wall + (foot || lip ? LEDGE : 0), foot, lip, sg: foot ? S.stackGap : 0,
     floor: S.floor, div: S.divider, hr: S.holeRadius, scoop: !!bin.scoop, label: !!bin.label,
   };
 }
 const specKey = s => [s.bw, s.bh, s.H, s.dx, s.dy, s.radii.join('/'), s.base.join('/'), s.top.join('/'),
-  s.wall, s.wi, s.floor, s.div, s.hr, s.scoop ? 'S' : '', s.label ? 'L' : '', s.foot ? 'F' : '', s.lip ? 'R' : ''].join('|');
+  s.wall, s.wi, s.floor, s.div, s.hr, s.scoop ? 'S' : '', s.label ? 'L' : '', s.foot ? 'F' + s.sg : '', s.lip ? 'R' : ''].join('|');
 const compartment = s => ({
   w: (s.bw - 2 * s.wi - (s.dx - 1) * s.div) / s.dx,
   h: (s.bh - 2 * s.wi - (s.dy - 1) * s.div) / s.dy,
@@ -660,28 +677,16 @@ function buildBin(s) {
   const P = (p, z) => [p[0], p[1], z];
   const H = s.H, F = s.floor, Hs = s.lip ? H - LIP_H : H, zo = s.foot ? FOOT_H : 0;
   const ob = rrect(...s.base, s.radii), ot = rrect(...s.top, s.radii);
+  // Verschiebung der schrägen Außenwand gegenüber dem Nennmaß bei Höhe z: [links, vorne, rechts, hinten]
+  const lerp = (k, z) => s.base[k] + (s.top[k] - s.base[k]) * (z - zo) / (H - zo);
+  const off = z => [lerp(0, z), lerp(1, z), lerp(2, z) - s.bw, lerp(3, z) - s.bh];
+  // Rechteck mit Abstand d zur Außenwand; Seiten an der Boxwand folgen der Schräge
+  const inset = (x0, y0, x1, y1, z, sides = [true, true, true, true]) => {
+    const o = off(z);
+    return [x0 + (sides[0] ? o[0] : 0), y0 + (sides[1] ? o[1] : 0), x1 + (sides[2] ? o[2] : 0), y1 + (sides[3] ? o[3] : 0)];
+  };
   const c = compartment(s);
   const hr = Math.max(0, Math.min(s.hr, c.w / 2 - 0.1, c.h / 2 - 0.1));
-  const holes = [];
-  for (let j = 0; j < s.dy; j++) for (let i = 0; i < s.dx; i++) {
-    const x0 = s.wi + i * (c.w + s.div), y0 = s.wi + j * (c.h + s.div);
-    // Fächer in den Außenecken folgen dem Eckradius, damit die Wand überall trägt
-    const isCorner = [i === 0 && j === 0, i === s.dx - 1 && j === 0, i === s.dx - 1 && j === s.dy - 1, i === 0 && j === s.dy - 1];
-    const rad = isCorner.map((on, k) => on ? Math.max(hr, s.radii[k] - s.wi) : hr);
-    holes.push(rrect(x0, y0, x0 + c.w, y0 + c.h, rad));
-    // Extras als eigene Körper, die mit Wand und Boden überlappen (Slicer vereinen sie)
-    const xa = x0 + Math.max(rad[0], rad[3]), xb = x0 + c.w - Math.max(rad[1], rad[2]);
-    if (s.scoop && scoopOk(s, c) && xb - xa > 2) {
-      const R = scoopR(s, c), e = 0.3, prof = [[y0 - e, F - e], [y0 + R, F - e], [y0 + R, F]];
-      for (let k = 1; k < 12; k++) { const a = (270 - 90 * k / 12) * Math.PI / 180; prof.push([y0 + R + R * Math.cos(a), F + R + R * Math.sin(a)]); }
-      prof.push([y0, F + R], [y0 - e, F + R]);
-      extrudeX(tri, prof, xa, xb);
-    }
-    if (s.label && labelOk(s, c) && xb - xa > 2) {
-      const y1 = y0 + c.h, e = 0.3;
-      extrudeX(tri, [[y1 + e, Hs], [y1 - LABEL_D, Hs], [y1 - LABEL_D, Hs - LABEL_T], [y1 + e, Hs - LABEL_T - LABEL_D - e]], xa, xb);
-    }
-  }
   const v2 = p => new THREE.Vector2(p[0], p[1]);
   const face = (outer, inner, z, up) => {
     const all = outer.concat(...inner);
@@ -702,24 +707,47 @@ function buildBin(s) {
       else { tri(P(lo[k], z0), P(hi[q], z1), P(lo[q], z0)); tri(P(lo[k], z0), P(hi[k], z1), P(hi[q], z1)); }
     }
   };
+  const holesTop = [];
+  for (let j = 0; j < s.dy; j++) for (let i = 0; i < s.dx; i++) {
+    const x0 = s.wi + i * (c.w + s.div), y0 = s.wi + j * (c.h + s.div);
+    // Fächer in den Außenecken folgen dem Eckradius, damit die Wand überall trägt
+    const isCorner = [i === 0 && j === 0, i === s.dx - 1 && j === 0, i === s.dx - 1 && j === s.dy - 1, i === 0 && j === s.dy - 1];
+    const rad = isCorner.map((on, k) => on ? Math.max(hr, s.radii[k] - s.wi) : hr);
+    const sides = [i === 0, j === 0, i === s.dx - 1, j === s.dy - 1];
+    const rb = inset(x0, y0, x0 + c.w, y0 + c.h, F, sides), rt = inset(x0, y0, x0 + c.w, y0 + c.h, Hs, sides);
+    const hb = rrect(...rb, rad), ht = rrect(...rt, rad);
+    fan(hb, F, true); loft(hb, ht, F, Hs, false); holesTop.push(ht);
+    // Extras als eigene Körper, die mit Wand und Boden überlappen (Slicer vereinen sie)
+    const xa = x0 + Math.max(rad[0], rad[3]), xb = x0 + c.w - Math.max(rad[1], rad[2]);
+    if (s.scoop && scoopOk(s, c) && xb - xa > 2) {
+      const R = scoopR(s, c), yf = rb[1], e = 0.3 + Math.abs(inset(x0, y0, x0, y0, F + R, sides)[1] - yf);
+      const prof = [[yf - e, F - 0.3], [yf + R, F - 0.3], [yf + R, F]];
+      for (let k = 1; k < 12; k++) { const a = (270 - 90 * k / 12) * Math.PI / 180; prof.push([yf + R + R * Math.cos(a), F + R + R * Math.sin(a)]); }
+      prof.push([yf, F + R], [yf - e, F + R]);
+      extrudeX(tri, prof, xa, xb);
+    }
+    if (s.label && labelOk(s, c) && xb - xa > 2) {
+      const y1 = rt[3], e = 0.3;
+      extrudeX(tri, [[y1 + e, Hs], [y1 - LABEL_D, Hs], [y1 - LABEL_D, Hs - LABEL_T], [y1 + e, Hs - LABEL_T - LABEL_D - e]], xa, xb);
+    }
+  }
   // Außen: optional Stapelfuß, dann schräge Außenwand
   if (s.foot) {
-    const g = s.wall + LIP_GAP;
-    const ft = rrect(g, g, s.bw - g, s.bh - g, s.radii.map(r => r - g));
-    fan(ft, 0, false);
-    loft(ft, ft, 0, zo, true);
+    const g = s.wall + Math.min(s.sg, LEDGE - 0.2), rf = s.radii.map(r => r - g);
+    const fb = rrect(...inset(g, g, s.bw - g, s.bh - g, 0), rf), ft = rrect(...inset(g, g, s.bw - g, s.bh - g, zo), rf);
+    fan(fb, 0, false);
+    loft(fb, ft, 0, zo, true);
     face(ob, [ft], zo, false);
   } else fan(ob, 0, false);
   loft(ob, ot, zo, H, true);
-  // Fächer
-  for (const h of holes) { fan(h, F, true); loft(h, h, F, Hs, false); }
   // Oben: optional Stapelrand mit Auflagekante
   if (s.lip) {
-    const I = rrect(s.wall, s.wall, s.bw - s.wall, s.bh - s.wall, s.radii.map(r => r - s.wall));
-    face(ot, [I], H, true);
-    loft(I, I, Hs, H, false);
-    face(I, holes, Hs, true);
-  } else face(ot, holes, H, true);
+    const w = s.wall, ri = s.radii.map(r => r - w);
+    const Ib = rrect(...inset(w, w, s.bw - w, s.bh - w, Hs), ri), It = rrect(...inset(w, w, s.bw - w, s.bh - w, H), ri);
+    face(ot, [It], H, true);
+    loft(Ib, It, Hs, H, false);
+    face(Ib, holesTop, Hs, true);
+  } else face(ot, holesTop, H, true);
   return new Float32Array(T);
 }
 
@@ -802,6 +830,22 @@ async function offerFile(filename, blob) {
 }
 
 /* ---------- Teile & Stückliste ---------- */
+const geoCache = new Map();
+function binTris(spec) {
+  const key = specKey(spec);
+  let t = geoCache.get(key);
+  if (!t) { if (geoCache.size > 300) geoCache.clear(); t = buildBin(spec); geoCache.set(key, t); }
+  return t;
+}
+const PLA = 1.24; // g/cm³
+function grams(spec) {
+  const t = binTris(spec);
+  let v = 0;
+  for (let i = 0; i < t.length; i += 9) {
+    v += (t[i] * (t[i + 4] * t[i + 8] - t[i + 5] * t[i + 7]) - t[i + 1] * (t[i + 3] * t[i + 8] - t[i + 5] * t[i + 6]) + t[i + 2] * (t[i + 3] * t[i + 7] - t[i + 4] * t[i + 6])) / 6;
+  }
+  return Math.abs(v) / 1000 * PLA;
+}
 function computeParts() {
   const parts = new Map(), byBin = new Map();
   S.layers.forEach((l, li) => {
@@ -1068,7 +1112,7 @@ function renderPlan() {
   for (let y = 0; y < rows; y++) for (let x = 0; x < cols; x++) {
     if (occ[y * cols + x] || isLocked(S.active)) continue;
     const X = x * cw + S.gap / 2 + 2, Y = y * ch + S.gap / 2 + 2, w = cw - S.gap - 4, h = ch - S.gap - 4;
-    s += `<g class="empty" data-cell="${x},${y}" role="button" aria-label="Teil hinzufügen"><rect x="${X}" y="${Y}" width="${w}" height="${h}" rx="6" fill="transparent" stroke="var(--fg-3)" stroke-width="1.5" stroke-dasharray="5 5"/>` +
+    s += `<g class="empty" data-cell="${x},${y}" role="button" tabindex="0" aria-label="Teil hinzufügen"><rect x="${X}" y="${Y}" width="${w}" height="${h}" rx="6" fill="transparent" stroke="var(--fg-3)" stroke-width="1.5" stroke-dasharray="5 5"/>` +
       `<text x="${X + w / 2}" y="${Y + h / 2}" text-anchor="middle" dominant-baseline="central" font-size="${fs}" fill="var(--fg-3)">+</text></g>`;
   }
   for (const o of bins) {
@@ -1078,7 +1122,7 @@ function renderPlan() {
     const x = o.x * cw + S.gap / 2, y = o.y * ch + S.gap / 2, w = spec.bw, h = spec.bh;
     const fill = sel ? 'var(--accent-soft)' : warn ? 'var(--warn-soft)' : 'var(--surface)';
     const stroke = sel ? 'var(--accent)' : warn ? 'var(--warn)' : 'var(--fg-2)';
-    s += `<g class="bin" data-id="${o.id}" role="button" aria-label="Teil ${p ? p.letter : ''}">`;
+    s += `<g class="bin" data-id="${o.id}" role="button" tabindex="0" aria-pressed="${sel}" aria-label="Teil ${p ? p.letter : ''}">`;
     s += `<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="${Math.min(S.radius, w / 2, h / 2)}" fill="${fill}" stroke="${stroke}" stroke-width="${sel ? 3 : 1.5}"/>`;
     for (let i = 1; i < o.dx; i++) { const xx = x + w * i / o.dx; s += `<line x1="${xx}" y1="${y + 4}" x2="${xx}" y2="${y + h - 4}" stroke="${stroke}" stroke-width="1" opacity=".7"/>`; }
     for (let j = 1; j < o.dy; j++) { const yy = y + h * j / o.dy; s += `<line x1="${x + 4}" y1="${yy}" x2="${x + w - 4}" y2="${yy}" stroke="${stroke}" stroke-width="1" opacity=".7"/>`; }
@@ -1139,14 +1183,15 @@ function renderBom() {
     const sel = S.selected && p.ids.includes(S.selected);
     return `<tr class="${sel ? 'sel' : ''}"><td><span class="letter">${p.letter}</span></td><td>${[...p.layers].join(', ')}</td>
       <td>${Math.round(o.w)} × ${Math.round(o.h)} × ${Math.round(s.H)}</td>
-      <td>${s.dx * s.dy}</td><td>${p.count}×</td>
+      <td>${s.dx * s.dy}</td><td>${p.count}×</td><td>${Math.round(grams(s) * p.count)}</td>
       <td>${!fitsXY(s) ? '<span class="chip warn">zu groß</span>' : s.H > S.bed ? '<span class="chip warn">zu hoch</span>' : '<span class="chip ok">passt</span>'}</td></tr>`;
   }).join('');
-  $('#bom').innerHTML = `<thead><tr><th>Teil</th><th>Ebene</th><th>Maß in mm</th><th>Fächer</th><th>Stück</th><th>Druckbett</th></tr></thead><tbody>${rows}</tbody>`;
+  $('#bom').innerHTML = `<thead><tr><th>Teil</th><th>Ebene</th><th>Maß in mm</th><th>Fächer</th><th>Stück</th><th>g</th><th>Druckbett</th></tr></thead><tbody>${rows}</tbody>`;
   const total = S.layers.reduce((a, l) => a + l.layout.bins.length, 0);
   $('#export-sum').textContent = `${total} Teile, ${partsInfo.parts.length} verschiedene`;
   $('#dl-all').disabled = total === 0;
-  $('#dl-sub').textContent = `${partsInfo.parts.length} STL-Dateien für ${total} Teile`;
+  const g = partsInfo.parts.reduce((a, p) => a + grams(p.spec) * p.count, 0);
+  $('#dl-sub').textContent = `${partsInfo.parts.length} STL-Dateien für ${total} Teile · ca. ${g >= 1000 ? fmt(g / 1000) + ' kg' : Math.round(g) + ' g'} PLA`;
   $('#dl-one').disabled = !binById(S.selected);
   $('#fit-bed').hidden = partsInfo.parts.every(p => fitsXY(p.spec));
   const L = S.layers[S.active];
@@ -1162,13 +1207,39 @@ function renderLook() {
   $('#fil-sw').innerHTML = sw(FILAMENTS, S.fil, 'fil');
   $('#box-sw').innerHTML = sw(BOXCOLORS, S.boxc, 'boxc');
   document.querySelectorAll('#view-seg button').forEach(btn => btn.setAttribute('aria-pressed', String(btn.dataset.view === S.view)));
+  $('#ghost-toggle').setAttribute('aria-checked', String(!!S.ghost));
 }
+/* Verlauf für Rückgängig/Wiederholen; Ansichtseinstellungen zählen nicht dazu */
+const LOOK_KEYS = ['selected', 'explode', 'view', 'fil', 'boxc', 'ghost'];
+const snap = () => JSON.stringify(S, (k, v) => LOOK_KEYS.includes(k) ? undefined : v);
+let past = [], future = [], lastSnap = null, lastPush = 0, replaying = false;
+function record() {
+  const now = snap();
+  if (lastSnap === null) { lastSnap = now; return; }
+  if (now === lastSnap || replaying) { lastSnap = now; return; }
+  // schnelle Folgeänderungen (Schieberegler) zu einem Schritt zusammenfassen
+  if (Date.now() - lastPush > 700 || !past.length) past.push(lastSnap);
+  if (past.length > 80) past.shift();
+  lastPush = Date.now(); future = []; lastSnap = now;
+}
+function restore(json) {
+  const keep = Object.fromEntries(LOOK_KEYS.map(k => [k, S[k]]));
+  const s = normalize(JSON.parse(json));
+  if (!s) return;
+  S = Object.assign(s, keep, { selected: null });
+  replaying = true; update(); replaying = false; lastSnap = snap();
+}
+function undo() { if (!past.length) return; future.push(lastSnap); restore(past.pop()); lastPush = 0; toast('Rückgängig'); }
+function redo() { if (!future.length) return; past.push(lastSnap); restore(future.pop()); lastPush = 0; toast('Wiederhergestellt'); }
+
 function update({ rebuild = true } = {}) {
   syncLocks();
   clampDividers();
   partsInfo = computeParts();
   renderBox(); renderLayers(); renderTemplates(); renderPlan(); renderEditor(); renderBom(); renderLook();
   if (scene) { if (rebuild) rebuildScene(); else recolor(); }
+  record();
+  $('#undo').disabled = !past.length; $('#redo').disabled = !future.length;
   saveState();
 }
 
@@ -1265,6 +1336,14 @@ $('#fit-bed').addEventListener('click', () => { S.selected = null; afterDims({ v
 $('#explode').addEventListener('click', () => { S.explode = !S.explode; update(); fitView(); });
 
 function select(id) { S.selected = id; update({ rebuild: false }); }
+$('#plan').addEventListener('keydown', e => {
+  if (e.key !== 'Enter' && e.key !== ' ') return;
+  const g = e.target.closest('g[tabindex]'); if (!g) return;
+  e.preventDefault();
+  const sel = g.dataset.id ? `g[data-id="${g.dataset.id}"]` : `g[data-cell="${g.dataset.cell}"]`;
+  g.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+  document.querySelector('#plan ' + sel)?.focus();
+});
 $('#plan').addEventListener('click', e => {
   const g = e.target.closest('g');
   if (!g) { select(null); return; }
@@ -1306,7 +1385,7 @@ $('#editor').addEventListener('click', e => {
 
 $('#dl-all').addEventListener('click', async () => {
   await downloadsReady;
-  const files = partsInfo.parts.map(p => ({ name: partFileName(p), data: toSTL(buildBin(p.spec), p.letter) }));
+  const files = partsInfo.parts.map(p => ({ name: partFileName(p), data: toSTL(binTris(p.spec), p.letter) }));
   const box = (S.foot === 'custom' ? `${Math.round(S.L)}x${Math.round(S.W)}` : footName().replace(/ × /g, 'x')) + `x${S.outerH}mm`;
   const hs = layerHeights();
   const lines = [
@@ -1318,18 +1397,36 @@ $('#dl-all').addEventListener('click', async () => {
     ...hs.map((h, i) => `Ebene ${i + 1}: ${fmt(h)} mm hoch, ab ${fmt(layerBase(i))} mm`),
     '',
     'Teile:',
-    ...partsInfo.parts.map(p => { const o = outerSize(p.spec); return `${p.letter}: ${p.count}x, Ebene ${[...p.layers].join('/')}, ${fmt(o.w)} x ${fmt(o.h)} x ${fmt(p.spec.H)} mm, ${p.spec.dx * p.spec.dy} Fächer${p.spec.scoop ? ', Griffmulde' : ''}${p.spec.label ? ', Beschriftungsfeld' : ''}${p.spec.foot ? ', Stapelfuß' : ''}${p.spec.lip ? ', Stapelrand' : ''}${fitsBed(p.spec) ? '' : '  (größer als Druckbett!)'}`; }),
+    ...partsInfo.parts.map(p => { const o = outerSize(p.spec); return `${p.letter}: ${p.count}x, Ebene ${[...p.layers].join('/')}, ${fmt(o.w)} x ${fmt(o.h)} x ${fmt(p.spec.H)} mm, ${p.spec.dx * p.spec.dy} Fächer${p.spec.scoop ? ', Griffmulde' : ''}${p.spec.label ? ', Beschriftungsfeld' : ''}${p.spec.foot ? ', Stapelfuß' : ''}${p.spec.lip ? ', Stapelrand' : ''}${fitsBed(p.spec) ? '' : '  (größer als Druckbett!)'}, ca. ${Math.round(grams(p.spec))} g je Stück`; }),
     '',
     'Druck: offene Seite nach oben, ohne Stützen. Erst die untere Ebene einlegen, dann die nächste darauf.',
   ];
   files.push({ name: 'stueckliste.txt', data: new TextEncoder().encode(lines.join('\r\n')) });
   await offerFile(`eurobox-inlay-${box}.zip`, makeZip(files));
 });
+$('#design-save').addEventListener('click', async () => {
+  await downloadsReady;
+  const data = JSON.stringify({ app: 'eurobox-inlay', version: 1, design: JSON.parse(snap()) }, null, 1);
+  const name = `eurobox-design-${footName().replace(/ × /g, 'x').replace(/\s+/g, '')}x${S.outerH}.json`;
+  await offerFile(name, new Blob([data], { type: 'application/json' }));
+});
+$('#design-load').addEventListener('click', () => $('#design-file').click());
+$('#design-file').addEventListener('change', async e => {
+  const f = e.target.files && e.target.files[0]; e.target.value = '';
+  if (!f) return;
+  try {
+    const j = JSON.parse(await f.text());
+    const d = normalize(j && j.design ? j.design : j);
+    if (!d) throw new Error('format');
+    if (lastSnap) { past.push(lastSnap); future = []; }
+    restore(JSON.stringify(d)); fitView(); toast('Design geladen');
+  } catch { toast('Diese Datei ist kein Eurobox-Inlay-Design'); }
+});
 $('#dl-one').addEventListener('click', async () => {
   await downloadsReady;
   const p = partsInfo.byBin.get(S.selected); if (!p) return;
   const name = partFileName(p);
-  const stl = toSTL(buildBin(p.spec), p.letter);
+  const stl = toSTL(binTris(p.spec), p.letter);
   if (downloadsApi) await offerFile(name.replace(/\.stl$/, '.zip'), makeZip([{ name, data: stl }]));
   else await offerFile(name, new Blob([stl], { type: 'model/stl' }));
 });
@@ -1380,6 +1477,7 @@ function initThree() {
   mats.warn = new THREE.MeshStandardMaterial({ roughness: 0.6, side: THREE.DoubleSide });
   mats.box = new THREE.MeshStandardMaterial({ roughness: 0.75, side: THREE.DoubleSide });
   mats.handle = new THREE.MeshBasicMaterial({ color: 0x111113, side: THREE.DoubleSide });
+  mats.ghost = new THREE.MeshStandardMaterial({ roughness: 0.75, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide });
   mats.edge = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.35 });
   mats.edgeDim = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.12 });
   mats.shell = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.6 });
@@ -1417,6 +1515,7 @@ function applyColors() {
   mats.bin.color.set(fil.c);
   mats.dim.color.set(fil.c);
   mats.box.color.set((BOXCOLORS.find(f => f.id === S.boxc) || BOXCOLORS[0]).c);
+  mats.ghost.color.copy(mats.box.color);
   const light = new THREE.Color(fil.c).getHSL({}).l > 0.5;
   mats.sel.color.set(css('--accent'));
   mats.warn.color.set(css('--limit'));
@@ -1529,6 +1628,12 @@ function rebuildBox() {
   g.setAttribute('position', new THREE.BufferAttribute(buildBox(), 3));
   g.computeVertexNormals();
   boxGroup.add(new THREE.Mesh(g, mats.box));
+  // Nächste Box im Stapel: Ihr tiefster Punkt liegt auf der Stapelgrenze
+  const gh = new THREE.Mesh(g, mats.ghost);
+  gh.position.z = maxH() + (S.explode ? EXPLODE * (S.layers.length - 1) : 0);
+  gh.userData.ghost = true;
+  gh.renderOrder = 2;
+  boxGroup.add(gh);
   // Griffmulden an den Stirnseiten
   const { OL } = boxOuter(), ox = (OL - S.L) / 2, RIM = Math.min(16, S.outerH * 0.2);
   const hw = Math.min(110, S.W * 0.45), hh = Math.max(4, RIM * 0.55);
@@ -1543,6 +1648,7 @@ function applyView() {
   if (!scene) return;
   const show = S.view !== 'none';
   boxGroup.visible = show;
+  boxGroup.children.forEach(o => { if (o.userData.ghost) o.visible = !!S.ghost && S.stacked && S.view === 'box'; });
   shellGroup.children.forEach(o => { if (!o.userData.limit) o.visible = !show; });
   // Schnitt mitten durch eine Teile-Reihe, damit Fuß und Rand sichtbar werden
   const L0 = S.layers[0].layout, ch = S.W / L0.rows;
@@ -1590,7 +1696,7 @@ function rebuildScene() {
       const p = partsInfo.byBin.get(bin.id);
       if (!cache.has(p.key)) {
         const g = new THREE.BufferGeometry();
-        g.setAttribute('position', new THREE.BufferAttribute(buildBin(p.spec), 3));
+        g.setAttribute('position', new THREE.BufferAttribute(binTris(p.spec), 3));
         g.computeVertexNormals();
         cache.set(p.key, { g, e: new THREE.EdgesGeometry(g, 35) });
       }
@@ -1624,7 +1730,7 @@ function recolor() {
 
 function fitView() {
   if (!camera) return;
-  const top = S.outerH + (S.explode ? EXPLODE * (S.layers.length - 1) : 0);
+  const top = (S.ghost && S.stacked && S.view === 'box' ? maxH() + S.outerH : S.outerH) + (S.explode ? EXPLODE * (S.layers.length - 1) : 0);
   const { OL, OW } = S.view === 'none' ? { OL: S.L, OW: S.W } : boxOuter();
   const size = Math.hypot(OL, OW, top * 0.8) * 1.1;
   const fit = size / 2 / Math.tan(camera.fov * Math.PI / 360) / Math.min(1, camera.aspect);
@@ -1636,9 +1742,23 @@ function fitView() {
   requestRender();
 }
 $('#view-reset').addEventListener('click', fitView);
+$('#undo').addEventListener('click', undo);
+$('#redo').addEventListener('click', redo);
+document.addEventListener('keydown', e => {
+  if (!(e.metaKey || e.ctrlKey) || /^(INPUT|TEXTAREA)$/.test(document.activeElement?.tagName)) return;
+  const k = e.key.toLowerCase();
+  if (k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+  else if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); redo(); }
+});
 $('#view-seg').addEventListener('click', e => {
   const btn = e.target.closest('button[data-view]'); if (!btn) return;
   S.view = btn.dataset.view; renderLook(); applyView(); fitView(); saveState();
+});
+$('#ghost-toggle').addEventListener('click', () => {
+  S.ghost = !S.ghost;
+  if (S.ghost && S.view !== 'box') S.view = 'box';
+  if (S.ghost && !S.stacked) toast('Schalte oben „Box darüber stapeln“ ein');
+  renderLook(); applyView(); fitView(); saveState();
 });
 $('#fil-sw').addEventListener('click', e => {
   const btn = e.target.closest('button[data-fil]'); if (!btn) return;
