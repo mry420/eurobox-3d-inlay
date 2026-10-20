@@ -274,6 +274,7 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
 /* Stage */
 .stage {
   position: relative;
+  min-height: 420px;
   border-radius: var(--r-lg);
   overflow: hidden;
   background: var(--scene);
@@ -338,7 +339,7 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
 @media (max-width: 860px) {
   html, body { height: auto; }
   .app { grid-template-columns: minmax(0, 1fr); height: auto; }
-  .stage { order: -1; height: 56vh; min-height: 300px; }
+  .stage { order: -1; height: min(56vh, 560px); min-height: 320px; }
   .panel { overflow: visible; }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -476,15 +477,11 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
 </div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-<script type="importmap">
-{ "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
-} }
-</script>
-<script type="module">
-import * as THREE from 'three';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+<script src="https://cdn.jsdelivr.net/npm/three@0.159.0/build/three.min.js"></script>
+<script>
+(() => {
+'use strict';
+const HAS3D = typeof THREE !== 'undefined';
 
 /* ---------- Grundwerte ---------- */
 const DEFAULTS = {
@@ -839,6 +836,7 @@ function binTris(spec) {
 }
 const PLA = 1.24; // g/cm³
 function grams(spec) {
+  if (!HAS3D) return 0;
   const t = binTris(spec);
   let v = 0;
   for (let i = 0; i < t.length; i += 9) {
@@ -1237,7 +1235,7 @@ function update({ rebuild = true } = {}) {
   clampDividers();
   partsInfo = computeParts();
   renderBox(); renderLayers(); renderTemplates(); renderPlan(); renderEditor(); renderBom(); renderLook();
-  if (scene) { if (rebuild) rebuildScene(); else recolor(); }
+  if (scene) { try { if (rebuild) rebuildScene(); else recolor(); } catch (err) { console.error(err); } }
   record();
   $('#undo').disabled = !past.length; $('#redo').disabled = !future.length;
   saveState();
@@ -1383,7 +1381,9 @@ $('#editor').addEventListener('click', e => {
   if (again && !again.disabled) again.focus();
 });
 
+const need3D = () => { if (!HAS3D) toast('Export braucht die 3D-Bibliothek. Bitte Seite neu laden.'); return HAS3D; };
 $('#dl-all').addEventListener('click', async () => {
+  if (!need3D()) return;
   await downloadsReady;
   const files = partsInfo.parts.map(p => ({ name: partFileName(p), data: toSTL(binTris(p.spec), p.letter) }));
   const box = (S.foot === 'custom' ? `${Math.round(S.L)}x${Math.round(S.W)}` : footName().replace(/ × /g, 'x')) + `x${S.outerH}mm`;
@@ -1423,6 +1423,7 @@ $('#design-file').addEventListener('change', async e => {
   } catch { toast('Diese Datei ist kein Eurobox-Inlay-Design'); }
 });
 $('#dl-one').addEventListener('click', async () => {
+  if (!need3D()) return;
   await downloadsReady;
   const p = partsInfo.byBin.get(S.selected); if (!p) return;
   const name = partFileName(p);
@@ -1433,17 +1434,77 @@ $('#dl-one').addEventListener('click', async () => {
 
 /* ---------- 3D ---------- */
 let scene, camera, renderer, controls, world, binsGroup, shellGroup, boxGroup;
-const clipPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0);
+const clipPlane = HAS3D ? new THREE.Plane(new THREE.Vector3(0, 0, -1), 0) : null;
 const mats = {};
 const stage = $('#stage');
 const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 const EXPLODE = 45;
 
+// Eigene Kamera-Steuerung: ziehen = drehen, rechte Maustaste/Shift oder zwei Finger = verschieben, Rad/Pinch = zoomen
+class Orbit {
+  constructor(cam, el, onChange) {
+    this.cam = cam; this.el = el; this.onChange = onChange;
+    this.target = new THREE.Vector3();
+    this.sph = new THREE.Spherical();
+    this.pts = new Map();
+    el.addEventListener('contextmenu', e => e.preventDefault());
+    el.addEventListener('pointerdown', e => {
+      el.setPointerCapture?.(e.pointerId);
+      this.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      this.mode = e.button === 2 || e.shiftKey ? 'pan' : 'rotate';
+      this.pinch = null;
+    });
+    el.addEventListener('pointermove', e => {
+      const prev = this.pts.get(e.pointerId);
+      if (!prev) return;
+      const cur = { x: e.clientX, y: e.clientY };
+      if (this.pts.size === 1) {
+        const dx = cur.x - prev.x, dy = cur.y - prev.y;
+        if (this.mode === 'pan') this.pan(dx, dy); else this.rotate(dx, dy);
+      } else if (this.pts.size === 2) {
+        const [a, b] = [...this.pts.entries()].map(([id, p]) => id === e.pointerId ? cur : p);
+        const d = Math.hypot(a.x - b.x, a.y - b.y), m = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+        if (this.pinch) { this.zoom(this.pinch.d / d); this.pan(m.x - this.pinch.m.x, m.y - this.pinch.m.y); }
+        this.pinch = { d, m };
+      }
+      this.pts.set(e.pointerId, cur);
+    });
+    const up = e => { this.pts.delete(e.pointerId); this.pinch = null; };
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+    el.addEventListener('wheel', e => { e.preventDefault(); this.zoom(Math.exp(e.deltaY * 0.0012)); }, { passive: false });
+  }
+  sync() { this.sph.setFromVector3(this.cam.position.clone().sub(this.target)); this.apply(); }
+  apply() {
+    this.sph.phi = Math.min(Math.PI * 0.49, Math.max(0.05, this.sph.phi));
+    this.sph.radius = Math.min(6000, Math.max(60, this.sph.radius));
+    this.cam.position.copy(this.target).add(new THREE.Vector3().setFromSpherical(this.sph));
+    this.cam.lookAt(this.target);
+    this.onChange();
+  }
+  rotate(dx, dy) {
+    const h = this.el.clientHeight || 1;
+    this.sph.theta -= 2 * Math.PI * dx / h; this.sph.phi -= 2 * Math.PI * dy / h;
+    this.apply();
+  }
+  pan(dx, dy) {
+    const f = 2 * this.sph.radius * Math.tan(this.cam.fov * Math.PI / 360) / (this.el.clientHeight || 1);
+    this.cam.updateMatrix();
+    const right = new THREE.Vector3().setFromMatrixColumn(this.cam.matrix, 0).multiplyScalar(-dx * f);
+    const upV = new THREE.Vector3().setFromMatrixColumn(this.cam.matrix, 1).multiplyScalar(dy * f);
+    this.target.add(right).add(upV);
+    this.apply();
+  }
+  zoom(k) { this.sph.radius *= k; this.apply(); }
+}
+function stageMsg(html) { stage.insertAdjacentHTML('beforeend', `<div class="stage-msg"><div>${html}</div></div>`); }
 function initThree() {
+  if (!HAS3D) { stageMsg('<strong>Die 3D-Bibliothek konnte nicht geladen werden.</strong><br>Prüfe die Internetverbindung und lade die Seite neu. Layout und Stückliste funktionieren trotzdem.'); return; }
   try {
     renderer = new THREE.WebGLRenderer({ antialias: true });
-  } catch {
-    stage.insertAdjacentHTML('beforeend', '<div class="stage-msg">Die 3D-Vorschau braucht WebGL. Layout und Export funktionieren trotzdem.</div>');
+  } catch (err) {
+    renderer = null;
+    stageMsg('<strong>Die 3D-Vorschau braucht WebGL.</strong><br>Dein Browser oder die App stellt es gerade nicht bereit. Layout und Export funktionieren trotzdem.');
     return;
   }
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
@@ -1451,11 +1512,7 @@ function initThree() {
   stage.prepend(renderer.domElement);
   scene = new THREE.Scene();
   camera = new THREE.PerspectiveCamera(35, 1, 1, 5000);
-  controls = new OrbitControls(camera, renderer.domElement);
-  controls.enableDamping = true;
-  controls.dampingFactor = 0.12;
-  controls.maxPolarAngle = Math.PI * 0.49;
-  controls.addEventListener('change', requestRender);
+  controls = new Orbit(camera, renderer.domElement, requestRender);
 
   scene.add(new THREE.HemisphereLight(0xffffff, 0x8a8a90, 1.6));
   const sun = new THREE.DirectionalLight(0xffffff, 1.6);
@@ -1542,9 +1599,7 @@ function requestRender() {
   renderQueued = true;
   requestAnimationFrame(() => {
     renderQueued = false;
-    const moving = controls.update();
     renderer.render(scene, camera);
-    if (moving) requestRender();
   });
 }
 
@@ -1737,8 +1792,7 @@ function fitView() {
   const dir = (S.view === 'cut' ? new THREE.Vector3(0.3, 0.45, 1) : new THREE.Vector3(0.35, 0.75, 0.9)).normalize();
   controls.target.set(0, top * 0.4, 0);
   camera.position.copy(dir.multiplyScalar(fit * 1.05)).add(controls.target);
-  camera.lookAt(controls.target);
-  controls.update();
+  controls.sync();
   requestRender();
 }
 $('#view-reset').addEventListener('click', fitView);
@@ -1771,9 +1825,14 @@ $('#box-sw').addEventListener('click', e => {
 
 /* ---------- Start ---------- */
 clampDividers();
-initThree();
+try { initThree(); } catch (err) {
+  console.error(err);
+  renderer?.domElement?.remove(); scene = null; camera = null;
+  stageMsg('<strong>Die 3D-Vorschau konnte nicht starten.</strong><br>' + esc(err && err.message || err));
+}
 update();
 fitView();
+})();
 </script>
 </body>
 </html>
