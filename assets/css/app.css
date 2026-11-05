@@ -439,3 +439,16 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
 .legal p, .legal li { color: var(--fg-2); }
 .legal .todo { background: var(--warn-soft); color: var(--fg); border-radius: 6px; padding: 1px 6px; }
 .legal a { color: var(--accent); }
+
+/* Handy: schwebende Leiste zum Export */
+.mbar {
+  position: fixed; z-index: 35; left: 50%; transform: translateX(-50%);
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  display: none; align-items: center; gap: 12px;
+  padding: 10px 10px 10px 16px; border-radius: 980px; text-decoration: none;
+  background: var(--glass); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .18); color: var(--fg); font-size: 13px; white-space: nowrap; max-width: calc(100% - 32px);
+}
+.mbar span { overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.mbar b { background: var(--accent); color: var(--on-accent); padding: 7px 14px; border-radius: 980px; font-weight: 600; }
+@media (max-width: 860px) { .mbar.on { display: flex; } }

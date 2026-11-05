@@ -909,6 +909,7 @@ function renderBom() {
   $('#tpl-state').textContent = t('tpl.state', { n: S.active + 1, t: tp ? (L.edited ? t('tpl.edited', { t: t(`tpl.${tp.id}.name`) }) : t(`tpl.${tp.id}.name`)) : t('tpl.own') });
   $('#grid-opts').hidden = L.tpl !== 'raster';
   $('#gc-val').textContent = S.gridCols; $('#gr-val').textContent = S.gridRows;
+  $('#mbar-info').textContent = t('mbar.info', { n: total, g: fmtGrams(g) });
   $('#hud-stats').textContent = t('hud.stats', { l: tn('hud.layers', S.layers.length), n: total, h: fmt(maxH()) });
 }
 
@@ -1682,6 +1683,17 @@ function initAds() {
     });
   }
 }
+// Handy: Leiste ausblenden, solange der Export-Bereich im Bild ist
+function initMobileBar() {
+  const bar = $('#mbar'), sec = $('#h-export')?.closest('section');
+  if (!bar || !sec || !('IntersectionObserver' in window)) return;
+  bar.hidden = false;
+  let inView = false, pastApp = false;
+  const set = () => bar.classList.toggle('on', !inView && pastApp);
+  new IntersectionObserver(es => { inView = es.some(e => e.isIntersecting); set(); }).observe(sec);
+  // erst zeigen, wenn man in die Werkzeuge scrollt
+  new IntersectionObserver(es => { pastApp = !es[0].isIntersecting; set(); }, { rootMargin: '-40% 0px 0px 0px' }).observe($('#stage'));
+}
 function initSite() {
   document.querySelectorAll('[data-year]').forEach(el => { el.textContent = new Date().getFullYear(); });
   const don = String(CFG.donateUrl || '').trim();
@@ -1704,6 +1716,7 @@ update();
 fitView();
 initSite();
 initAds();
+initMobileBar();
 // Design aus einem Teilen-Link öffnen
 if (ON_WEB && location.hash.startsWith('#d=')) {
   decodeDesign(location.hash.slice(3)).then(json => {
