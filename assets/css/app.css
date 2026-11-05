@@ -110,6 +110,7 @@ button { cursor: pointer; }
 .foot { text-align: center; color: var(--fg-3); font-size: 12px; padding: 4px 8px 8px; }
 .btn.primary { display: grid; gap: 1px; }
 .btn.primary small { font-size: 12px; font-weight: 400; opacity: .85; }
+.btn .sub { font-size: 12px; font-weight: 400; opacity: .75; }
 
 .group {
   background: var(--surface);

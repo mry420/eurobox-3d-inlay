@@ -902,6 +902,7 @@ function renderBom() {
   $('#dl-sub').textContent = t('dl.sub', { f: partsInfo.parts.length, n: total, g: fmtGrams(g) });
   $('#print-est').textContent = total ? t('print.est', { g: fmtGrams(g), c: (g / 1000 * 20).toLocaleString(locale(), { maximumFractionDigits: 0 }), a: fmtHours(h1), b: fmtHours(h2) }) : '';
   $('#dl-one').disabled = !binById(S.selected);
+  $('#dl-test-sub').textContent = HAS3D ? `· ${t('test.sub', { g: Math.round(testGrams()) })}` : '';
   $('#fit-bed').hidden = partsInfo.parts.every(p => fitsXY(p.spec));
   const L = S.layers[S.active];
   const tp = TEMPLATES.find(x => x.id === L.tpl);
@@ -1168,6 +1169,27 @@ $('#dl-3mf').addEventListener('click', async () => {
     if (downloadsApi) await offerFile(name.replace(/\.3mf$/, '-3mf.zip'), await makeZip([{ name, data: new Uint8Array(await blob.arrayBuffer()) }, { name: t('file.list'), data: new TextEncoder().encode(partsList()) }]));
     else await offerFile(name, blob);
   } finally { btn.disabled = false; btn.removeAttribute('aria-busy'); }
+});
+// Passform-Test: flaches Eckstück (Eckradius und Wandschräge) und bei Verzahnung ein Rand/Fuß-Paar
+function testSpecs() {
+  const R = Math.max(0.5, S.radius), BR = Math.max(R, S.boxRadius), base = { wall: S.wall, floor: S.floor, div: S.divider, hr: S.holeRadius,
+    scoop: false, label: false, texts: [], dx: 1, dy: 1, foot: false, lip: false, sg: 0 };
+  const n = 60, h = 12, g = r2(grow(h));
+  const out = [{ name: t('test.corner'), spec: { ...base, bw: n, bh: n, H: h, radii: [BR, R, R, R], base: [0, 0, n, n], top: [-g, -g, n, n], wi: S.wall } }];
+  if (S.layers.some((l, i) => isLocked(i))) {
+    const m = 50, hl = 14;
+    out.push({ name: t('test.lip'), spec: { ...base, bw: m, bh: m, H: hl, radii: [R, R, R, R], base: [0, 0, m, m], top: [0, 0, m, m], wi: S.wall + LEDGE, lip: true } });
+    out.push({ name: t('test.foot'), spec: { ...base, bw: m, bh: m, H: hl + LIP_H, radii: [R, R, R, R], base: [0, 0, m, m], top: [0, 0, m, m], wi: S.wall + LEDGE, foot: true, sg: S.stackGap } });
+  }
+  return out;
+}
+const testGrams = () => (HAS3D ? testSpecs().reduce((a, x) => a + grams(x.spec), 0) : 0);
+$('#dl-test').addEventListener('click', async () => {
+  if (!need3D()) return;
+  await downloadsReady;
+  const files = testSpecs().map(x => ({ name: `${slug(x.name)}.stl`, data: toSTL(binTris(x.spec), x.name) }));
+  files.push({ name: t('file.testInfo'), data: new TextEncoder().encode(t('test.info', { g: S.gap, s: S.stackGap })) });
+  await offerFile(`eurobox-${t('file.test')}-${boxSlug()}.zip`, await makeZip(files));
 });
 $('#dl-one').addEventListener('click', async () => {
   if (!need3D()) return;

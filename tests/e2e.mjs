@@ -51,6 +51,7 @@ for (const tp of ['kabel', 'netzteile', 'gemischt', 'kleinteile', 'werkstatt', '
 }
 await page.click('#hc-220'); await page.click('#tpl-zwei'); await page.waitForTimeout(200);
 await dl('#dl-3mf', 'zwei-220.3mf');
+const fit = await dl('#dl-test', 'fit-test.zip'); ok(fs.statSync(fit).size > 500, 'Passform-Test geladen');
 
 // Rückgängig, Design speichern/öffnen
 await page.click('#layer-0');

@@ -13,6 +13,7 @@ Kostenloser Web-Generator für **stapelbare 3D-Druck-Einsätze in Euroboxen** (E
 - **Druckerprofile**: Bambu Lab, Prusa, Creality, Elegoo, Voron oder eigene Maße. Zu große Teile werden automatisch geteilt.
 - **Export**: ZIP mit STL je Teil-Variante (Stückzahl im Dateinamen, Stückliste mit Farbwechsel-Höhe) oder eine **3MF-Datei** mit allen Teilen in richtiger Anzahl, auf Druckbetten verteilt.
 - **3D-Vorschau** in einer Eurobox, im Schnitt oder ohne Box, mit Filament- und Boxfarbe und der nächsten Box als Geist.
+- **Passform-Test**: flaches Eckstück und Rand/Fuß-Paar mit Anleitung, um Maße und Spiel mit wenigen Gramm zu prüfen.
 - **Teilen**: Design als Datei speichern und öffnen oder als Link kopieren.
 - Filamentverbrauch, Kosten und grobe Druckzeit, hell und dunkel, Handy-tauglich, offline nutzbar (PWA).
 
