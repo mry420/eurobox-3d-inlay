@@ -15,7 +15,7 @@ Hinweis: GitHub Pages ist für private Repositories nur in bezahlten Tarifen ver
 1. Domain kaufen, zum Beispiel `eurobox-inlay.de`.
 2. In **Settings → Pages → Custom domain** eintragen und „Enforce HTTPS“ aktivieren.
 3. Beim Domain-Anbieter die DNS-Einträge setzen, die GitHub anzeigt (`A`-Records auf GitHub Pages oder `CNAME` auf `<benutzer>.github.io`).
-4. In `sitemap.xml` und `robots.txt` `DEINE-DOMAIN` ersetzen.
+4. In `index.html` (Vorschaubild, `canonical`, `og:url`), `sitemap.xml` und `robots.txt` `DEINE-DOMAIN` ersetzen. Bis dahin zeigen geteilte Links kein Vorschaubild.
 5. In `assets/js/config.js` `siteUrl` eintragen.
 
 ## 3. Rechtliches (Deutschland)

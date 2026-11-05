@@ -71,7 +71,7 @@ const TEMPLATES = [
   { id: 'lader', layers: [{ f: 1, cols: 3, rows: 2, bins: grid(3, 2, (x, y) => b(x, y, 1, 1, 1, 2, 100, false, true)) }] },
   { id: 'gemischt', layers: [{ f: 1, cols: 4, rows: 4, bins: [b(0,0,2,2), b(2,0,2,1,2,1), b(2,1,1,1), b(3,1,1,1), b(0,2,1,2), b(1,2,1,2), b(2,2,2,2,1,2)] }] },
   { id: 'kleinteile', layers: [{ f: 1, cols: 6, rows: 4, bins: grid(6, 4, (x, y) => b(x, y, 1, 1, 1, 1, 100, true, true)) }] },
-  { id: 'werkstatt', layers: [{ f: 1, cols: 4, rows: 3, bins: [b(0,0,4,1,3,1), b(0,1,2,2,2,1, 100, true), b(2,1,1,1,1,1,100,true,true), b(3,1,1,1,1,1,100,true,true), b(2,2,1,1,1,1,100,true,true), b(3,2,1,1,1,1,100,true,true)] }] },
+  { id: 'werkstatt', layers: [{ f: 1, cols: 4, rows: 3, bins: [b(0,0,2,1,2,1), b(2,0,2,1,2,1), b(0,1,2,2,2,1, 100, true), b(2,1,1,1,1,1,100,true,true), b(3,1,1,1,1,1,100,true,true), b(2,2,1,1,1,1,100,true,true), b(3,2,1,1,1,1,100,true,true)] }] },
   { id: 'zwei', multi: true, layers: [
     { f: 0.6, cols: 4, rows: 2, bins: grid(4, 2, (x, y) => b(x, y, 1, 1)) },
     { f: 0.4, lock: true, cols: 4, rows: 2, bins: grid(4, 2, (x, y) => b(x, y, 1, 1, 1, 2, 100, true, true)) },

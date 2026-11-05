@@ -289,7 +289,7 @@ table.bom { width: 100%; border-collapse: collapse; font-size: 13px; font-varian
 .hudseg { pointer-events: auto; background: var(--glass); -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px); box-shadow: 0 1px 4px rgba(0, 0, 0, .08); }
 .hudseg button { padding: 6px 12px; }
 .swatches { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
-.sw { width: 28px; height: 28px; border-radius: 50%; border: 0; padding: 0; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .18); transition: transform .15s; }
+.sw { width: 28px; height: 28px; border-radius: 50%; border: 0; padding: 0; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .18), 0 0 0 1px var(--line); transition: transform .15s; }
 .sw:active { transform: scale(.92); }
 .sw[aria-pressed="true"] { outline: 2.5px solid var(--accent); outline-offset: 2px; }
 @media (max-width: 520px) { .pill.muted, .pill.legend { display: none; } }

@@ -16,7 +16,10 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="Eurobox Inlay Generator">
 <meta property="og:description" content="Stapelbare 3D-Druck-Einsätze für Euroboxen entwerfen und kostenlos als STL oder 3MF herunterladen.">
-<meta property="og:image" content="assets/img/og.png">
+<!-- Nach dem Veröffentlichen DEINE-DOMAIN ersetzen (docs/LAUNCH.md, Schritt 2) -->
+<meta property="og:image" content="https://DEINE-DOMAIN/assets/img/og.png">
+<link rel="canonical" href="https://DEINE-DOMAIN/">
+<meta property="og:url" content="https://DEINE-DOMAIN/">
 <meta name="twitter:card" content="summary_large_image">
 <!--/site-only-->
 </head>
@@ -114,7 +117,7 @@
         <button type="button" class="btn danger" id="layer-del" data-i18n="lay.del">Ebene entfernen</button>
       </div>
       <p class="hint" data-i18n="lay.hint">Tippe auf ein Teil, um Fächer, Extras und Aufteilung zu ändern. Leere Felder füllst du mit +.</p>
-      <div class="plan-wrap"><svg id="plan" role="img" data-i18n-attr="aria-label:lay.planAria"></svg></div>
+      <div class="plan-wrap"><svg id="plan" role="group" data-i18n-attr="aria-label:lay.planAria"></svg></div>
       <div id="editor"></div>
     </section>
 
