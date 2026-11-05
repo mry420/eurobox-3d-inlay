@@ -1,0 +1,12 @@
+{
+  "name": "eurobox-inlay-generator",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/e2e.mjs tests/out && python3 tests/check_meshes.py tests/out",
+    "artifact": "node tools/build-artifact.mjs dist/artifact.html"
+  },
+  "devDependencies": {
+    "playwright": "^1.56.0"
+  }
+}

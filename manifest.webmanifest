@@ -1,0 +1,17 @@
+{
+  "name": "Eurobox Inlay Generator",
+  "short_name": "Eurobox Inlay",
+  "description": "Stapelbare 3D-Druck-Einsätze für Euroboxen entwerfen und als STL oder 3MF herunterladen.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f5f5f7",
+  "theme_color": "#0071e3",
+  "lang": "de",
+  "icons": [
+    { "src": "assets/img/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "assets/img/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "assets/img/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "assets/img/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

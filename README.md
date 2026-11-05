@@ -1,38 +1,49 @@
 # Eurobox Inlay Generator
 
-Browser-Generator für stapelbare 3D-Druck-Einsätze in Euroboxen **40 × 30 × 12 cm** und **40 × 30 × 17 cm**, z. B. um Kabel, Netzteile und Kleinteile zu sortieren.
-
-Einfach `index.html` im Browser öffnen, ohne Installation und ohne Build. Three.js wird vom CDN geladen.
+Kostenloser Web-Generator für **stapelbare 3D-Druck-Einsätze in Euroboxen** (Eurobehälter nach VDA 4500), zum Beispiel für Kabel, Netzteile, Werkzeug und Kleinteile. Läuft komplett im Browser, auf Deutsch und Englisch.
 
 ## Funktionen
 
-- **Vorlagen**: Kabel-Bahnen, Kabel & Netzteile, Ladegeräte, Gemischt, Kleinteile, Zwei Ebenen, Drei Ebenen, eigenes Raster
-- **Ebenen**: Einsätze in bis zu 4 Lagen übereinander. Jede Ebene hat ihr eigenes Layout und füllt die ganze Bodenfläche, die obere liegt eben auf der unteren auf.
-- **Bündiger Sitz in der Box**: Die Außenwände der Randteile folgen der Wandschräge der Eurobox, die Eckteile dem Eckradius der Box. Dadurch verrutscht nichts.
-- **Stapelbare Boxen**: Die Einsätze enden unter der Stapelgrenze (Innenhöhe minus Stapel-Freiraum), damit die nächste Eurobox noch draufpasst.
-- **Layout-Editor**: Teile teilen, verbinden, entfernen, hinzufügen. Fächer pro Teil, Griffmulde vorne, Beschriftungsfeld hinten, Höhe der obersten Ebene (voll, ¾, ½, ⅓).
-- **Druckbett-Prüfung**: Teile, die größer als dein Druckbett sind, werden markiert.
-- **Export**: ZIP mit einer STL pro Teil-Variante (gleiche Teile nur einmal, Stückzahl im Dateinamen) plus Stückliste.
-- Hell und dunkel, läuft auch auf dem Handy. Einstellungen bleiben im Browser gespeichert.
+- **Alle gängigen Größen**: Grundflächen 30 × 20, 40 × 30, 60 × 40 und 80 × 60 cm oder eigene Innenmaße, Außenhöhe per Schieberegler von 50 bis 450 mm.
+- **Box bleibt stapelbar**: Die Einsatzhöhe richtet sich nach Herstellerdaten (Auer: Außenhöhe − 27 mm bei 30 × 20/40 × 30, − 17 mm bei 60 × 40/80 × 60) und ist einstellbar. Eine Seitenansicht zeigt live, wo die nächste Box aufsitzt.
+- **Bündiger Sitz**: Randteile folgen der Wandschräge und dem Eckradius der Box. Die Wände bleiben überall gleich dünn.
+- **Ebenen, verzahnt stapelbar**: Bis zu vier Lagen. Verzahnte Ebenen bekommen unten einen Stapelrand und oben einen passenden Fuß.
+- **Vorlagen**: Kabel-Bahnen, Kabel & Netzteile, Ladegeräte, Gemischt, Kleinteile, Werkstatt, Zwei Ebenen, Drei Ebenen, eigenes Raster.
+- **Editor**: Teile teilen, verbinden, entfernen, Fächer pro Teil, Griffmulde, Beschriftungsfeld mit **erhabener Schrift** (z. B. „USB-C“), Höhe der obersten Ebene, Rückgängig und Wiederholen.
+- **Druckerprofile**: Bambu Lab, Prusa, Creality, Elegoo, Voron oder eigene Maße. Zu große Teile werden automatisch geteilt.
+- **Export**: ZIP mit STL je Teil-Variante (Stückzahl im Dateinamen, Stückliste mit Farbwechsel-Höhe) oder eine **3MF-Datei** mit allen Teilen in richtiger Anzahl, auf Druckbetten verteilt.
+- **3D-Vorschau** in einer Eurobox, im Schnitt oder ohne Box, mit Filament- und Boxfarbe und der nächsten Box als Geist.
+- **Passform-Test**: flaches Eckstück und Rand/Fuß-Paar mit Anleitung, um Maße und Spiel mit wenigen Gramm zu prüfen.
+- **Teilen**: Design als Datei speichern und öffnen oder als Link kopieren.
+- Filamentverbrauch, Kosten und grobe Druckzeit, hell und dunkel, Handy-tauglich, offline nutzbar (PWA).
 
-## Maße
+## Aufbau
 
-Standardwerte (unter „Maße & Druck anpassen“ änderbar, am besten an deiner Box nachmessen):
-
-| Wert | Standard |
+| Pfad | Inhalt |
 |---|---|
-| Innenmaß am Boden | 355 × 255 mm |
-| Innenlänge oben (Wandschräge) | ca. 363 mm (12er) |
-| Innenhöhe | 115 mm (12er), 165 mm (17er) |
-| Stapel-Freiraum | 15 mm |
-| Wand / Boden / Trennwand | 1,6 / 1,2 / 1,2 mm |
-| Spiel zwischen Teilen | 0,6 mm |
-| Druckbett | 256 mm |
+| `index.html` | Seite mit Generator, Anleitung, FAQ, Footer |
+| `assets/js/app.js` | Generator, Geometrie, Export, 3D-Vorschau |
+| `assets/js/i18n.js` | Alle Texte auf Deutsch und Englisch |
+| `assets/js/config.js` | Werbung, Domain, Spendenlink |
+| `assets/js/font.js` | Schrift für Beschriftungen (Droid Sans Bold, Apache 2.0) |
+| `assets/vendor/three.min.js` | three.js r159 (MIT), lokal, kein CDN nötig |
+| `impressum.html`, `datenschutz.html` | Vorlagen zum Ausfüllen |
+| `sw.js`, `manifest.webmanifest` | Offline-Nutzung und App-Installation |
+| `tests/` | End-to-End-Test und Prüfung der exportierten Körper |
+| `tools/build-artifact.mjs` | baut eine Einzeldatei für die Claude-Vorschau |
+| `docs/LAUNCH.md` | **Anleitung zum Veröffentlichen mit Domain und Werbung** |
 
-## Drucken
+Es gibt keinen Build-Schritt: `index.html` im Browser öffnen oder den Ordner auf einen beliebigen Webspace legen.
 
-Offene Seite nach oben, ohne Stützen. Griffmulden und Beschriftungsfelder sind eigene Körper, die mit Wand und Boden überlappen. Gängige Slicer (Bambu Studio, OrcaSlicer, PrusaSlicer, Cura) vereinen sie automatisch.
+## Entwickeln und testen
 
-## Online stellen
+```bash
+npm i -D playwright
+node tests/e2e.mjs tests/out          # Bedienung, Sprachen, Exporte
+python3 tests/check_meshes.py tests/out  # alle STL/3MF-Körper geschlossen?
+```
 
-Über GitHub Pages: Repository-Einstellungen → Pages → Branch wählen, Ordner `/ (root)`.
+## Lizenzen
+
+- three.js: MIT (`assets/vendor/three.LICENSE`)
+- Droid Sans: Apache License 2.0 (`assets/vendor/droid-sans.NOTICE`)

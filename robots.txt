@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Nach dem Veröffentlichen die echte Adresse eintragen:
+# Sitemap: https://DEINE-DOMAIN/sitemap.xml
